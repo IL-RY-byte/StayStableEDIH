@@ -13,18 +13,20 @@
             margin: 0;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
 
         .instructions {
             position: fixed;
             top: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(102, 126, 234, 0.9);
             color: white;
             padding: 15px;
             border-radius: 10px;
             z-index: 999;
             max-width: 320px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .crosshair {
@@ -64,12 +66,13 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(118, 75, 162, 0.9);
             color: white;
             padding: 15px;
             border-radius: 10px;
             z-index: 999;
             min-width: 200px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .point-message {
@@ -77,7 +80,7 @@
             bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(102, 126, 234, 0.95);
             color: white;
             padding: 15px;
             border-radius: 10px;
@@ -85,6 +88,7 @@
             text-align: center;
             opacity: 1;
             transition: opacity 0.5s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
 
         .point-message.fade {
@@ -140,16 +144,17 @@
             transform: translateX(-50%);
             width: 300px;
             height: 20px;
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(255, 255, 255, 0.2);
             border-radius: 10px;
             overflow: hidden;
             z-index: 999;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         .progress-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, #9ACBAF, #678574);
+            background: linear-gradient(90deg, #667eea, #764ba2);
             transition: width 0.5s;
         }
         
@@ -157,37 +162,44 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(118, 75, 162, 0.9);
             color: white;
             padding: 15px;
             border-radius: 10px;
             z-index: 999;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
         .mode-selector {
             position: fixed;
             bottom: 20px;
             left: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(102, 126, 234, 0.9);
             color: white;
             padding: 15px;
             border-radius: 10px;
             z-index: 999;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
         
         select, button {
-            background: #444;
+            background: rgba(255, 255, 255, 0.2);
             color: white;
-            border: none;
-            padding: 5px 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 15px;
             border-radius: 5px;
             margin: 5px 0;
             cursor: pointer;
+            font-weight: 500;
         }
         
         select:focus, button:focus {
             outline: none;
-            box-shadow: 0 0 0 2px #9ACBAF;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+        
+        select:hover, button:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
         
         .hotspot {
@@ -200,19 +212,20 @@
             bottom: 100px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(102, 126, 234, 0.9);
             color: white;
             padding: 15px 30px;
             border-radius: 10px;
             z-index: 999;
             font-size: 18px;
             cursor: pointer;
-            border: 2px solid #9ACBAF;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         }
         
         .vr-stereo-mode:hover {
-            background: rgba(0, 0, 0, 0.9);
-            box-shadow: 0 0 15px rgba(154, 203, 175, 0.5);
+            background: rgba(118, 75, 162, 0.9);
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
         }
         
         /* Stereo view container */
@@ -252,7 +265,7 @@
     <div class="data-panel">
         <div>Score: <span id="score">0</span></div>
         <div>Focus quality: <span id="focus-quality">0%</span></div>
-        <div>Learning rate: <span id="learning-rate">0%</span></div>
+        <div>Prediction: <span id="learning-rate">0%</span></div>
     </div>
 
     <div class="progress-bar">
@@ -292,7 +305,7 @@
             </a-entity>
         </a-camera>
 
-        <a-sky color="#87CEEB"></a-sky>
+        <a-sky color="#f0e6ff"></a-sky>
         <a-entity id="hotspots"></a-entity>
         <a-entity id="path-indicators"></a-entity>
     </a-scene>
@@ -332,7 +345,7 @@
         // Current active configuration
         let ACTIVE_CONFIG = CONFIG.pursuit;
         
-        // Learning data
+        // Learning data with cursor tracking
         const LEARNING_DATA = {
             fastComponent: 0,
             slowComponent: 0,
@@ -344,8 +357,18 @@
             trials: 0,
             targetsHit: 0,
             sessionStartTime: 0,
-            focusQuality: 0
+            focusQuality: 0,
+            cursorHistory: [],
+            cursorVelocity: { x: 0, y: 0, z: 0 },
+            anticipationScore: 0,
+            trackingAccuracy: 0,
+            predictionEfficiency: 0
         };
+
+        // Cursor tracking variables
+        let lastCursorPos = null;
+        let cursorUpdateInterval = null;
+        let isTrainingActive = false;
 
         // Audio synth setup
         let synth;
@@ -410,6 +433,109 @@
         let sessionTimer = null;
         let isVRMode = false;
         
+        // Calculate cursor velocity and update tracking
+        function updateCursorTracking() {
+            if (!isTrainingActive) return;
+            
+            const camera = document.querySelector('a-camera');
+            if (!camera) return;
+            
+            const cameraRotation = camera.getAttribute('rotation');
+            const currentPos = {
+                x: cameraRotation.y,
+                y: cameraRotation.x,
+                z: 0,
+                timestamp: Date.now()
+            };
+            
+            if (lastCursorPos) {
+                const dt = (currentPos.timestamp - lastCursorPos.timestamp) / 1000;
+                if (dt > 0) {
+                    LEARNING_DATA.cursorVelocity = {
+                        x: (currentPos.x - lastCursorPos.x) / dt,
+                        y: (currentPos.y - lastCursorPos.y) / dt,
+                        z: 0
+                    };
+                }
+            }
+            
+            LEARNING_DATA.cursorHistory.push(currentPos);
+            if (LEARNING_DATA.cursorHistory.length > 10) {
+                LEARNING_DATA.cursorHistory.shift();
+            }
+            
+            lastCursorPos = currentPos;
+            
+            calculateTrackingMetrics();
+        }
+        
+        // Calculate distance between cursor and target in screen space
+        function getTargetCursorDistance(target) {
+            const camera = document.querySelector('a-camera');
+            const cameraRotation = camera.getAttribute('rotation');
+            const targetPos = target.getAttribute('position');
+            
+            const dx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
+            const dy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
+            
+            const angularDistance = Math.sqrt(
+                Math.pow(dx - cameraRotation.y, 2) +
+                Math.pow(dy - cameraRotation.x, 2)
+            );
+            
+            return angularDistance;
+        }
+        
+        // Predict where cursor will be based on velocity
+        function predictCursorPosition(timeAhead) {
+            if (!lastCursorPos) return null;
+            
+            return {
+                x: lastCursorPos.x + LEARNING_DATA.cursorVelocity.x * timeAhead,
+                y: lastCursorPos.y + LEARNING_DATA.cursorVelocity.y * timeAhead
+            };
+        }
+        
+        // Calculate tracking metrics
+        function calculateTrackingMetrics() {
+            if (activeHotspots.length === 0) return;
+            
+            let nearestTarget = null;
+            let minDistance = Infinity;
+            
+            activeHotspots.forEach(target => {
+                const dist = getTargetCursorDistance(target);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestTarget = target;
+                }
+            });
+            
+            if (!nearestTarget) return;
+            
+            LEARNING_DATA.trackingAccuracy = Math.max(0, 100 - minDistance * 10);
+            
+            const predictedPos = predictCursorPosition(0.5);
+            if (predictedPos) {
+                const targetPos = nearestTarget.getAttribute('position');
+                const predictedDx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
+                const predictedDy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
+                
+                const predictedDistance = Math.sqrt(
+                    Math.pow(predictedDx - predictedPos.x, 2) +
+                    Math.pow(predictedDy - predictedPos.y, 2)
+                );
+                
+                LEARNING_DATA.anticipationScore = Math.max(0, 100 - predictedDistance * 8);
+            }
+            
+            LEARNING_DATA.predictionEfficiency = 
+                (LEARNING_DATA.trackingAccuracy * 0.4) + 
+                (LEARNING_DATA.anticipationScore * 0.6);
+            
+            updateLearningUI();
+        }
+        
         // Initialize the session
         function initSession() {
             LEARNING_DATA.sessionStartTime = Date.now();
@@ -419,6 +545,14 @@
             LEARNING_DATA.slowComponent = 0;
             LEARNING_DATA.totalLearning = 0;
             LEARNING_DATA.focusQuality = 0;
+            LEARNING_DATA.cursorHistory = [];
+            LEARNING_DATA.cursorVelocity = { x: 0, y: 0, z: 0 };
+            LEARNING_DATA.anticipationScore = 0;
+            LEARNING_DATA.trackingAccuracy = 0;
+            LEARNING_DATA.predictionEfficiency = 0;
+            
+            lastCursorPos = null;
+            isTrainingActive = true;
             
             while (hotspotsContainer.firstChild) {
                 hotspotsContainer.removeChild(hotspotsContainer.firstChild);
@@ -435,6 +569,9 @@
             
             if (sessionTimer) clearInterval(sessionTimer);
             sessionTimer = setInterval(updateSessionTime, 1000);
+            
+            if (cursorUpdateInterval) clearInterval(cursorUpdateInterval);
+            cursorUpdateInterval = setInterval(updateCursorTracking, 50);
             
             for (let i = 0; i < ACTIVE_CONFIG.numHotspots; i++) {
                 setTimeout(() => createHotspot(), i * 500);
@@ -479,7 +616,7 @@
                 });
                 
                 indicator.setAttribute('material', {
-                    color: '#9ACBAF',
+                    color: '#667eea',
                     opacity: 0.3,
                     transparent: true,
                     shader: 'flat'
@@ -494,7 +631,7 @@
                     line.setAttribute('line', {
                         start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`,
                         end: `${pos.x} ${pos.y} ${pos.z}`,
-                        color: '#9ACBAF',
+                        color: '#764ba2',
                         opacity: 0.2
                     });
                     
@@ -530,8 +667,8 @@
             });
             hotspot.setAttribute('material', {
                 shader: 'flat',
-                color: '#9ACBAF',
-                emissive: '#678574',
+                color: '#667eea',
+                emissive: '#764ba2',
                 emissiveIntensity: 0.8
             });
             hotspot.setAttribute('class', 'hotspot');
@@ -584,14 +721,19 @@
             hotspot.addEventListener('click', function() {
                 const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
                 const focusQuality = Math.min(100, (focusDuration / ACTIVE_CONFIG.fuseTimeout) * 100);
-                LEARNING_DATA.focusQuality = focusQuality;
+                
+                const enhancedQuality = (focusQuality * 0.4) + 
+                                       (LEARNING_DATA.trackingAccuracy * 0.3) + 
+                                       (LEARNING_DATA.anticipationScore * 0.3);
+                
+                LEARNING_DATA.focusQuality = enhancedQuality;
                 
                 if (isAudioInitialized) {
-                    window.focusSound(focusQuality);
+                    window.focusSound(enhancedQuality);
                     setTimeout(() => window.successSound(), 300);
                 }
                 
-                updateLearning(focusQuality);
+                updateLearning(enhancedQuality);
                 
                 this.setAttribute('animation', {
                     property: 'scale',
@@ -672,177 +814,3 @@
         // Update UI with learning metrics
         function updateLearningUI() {
             focusQualityEl.textContent = `${Math.round(LEARNING_DATA.focusQuality)}%`;
-            
-            const learningRate = LEARNING_DATA.trials > 1 ? 
-                Math.round((LEARNING_DATA.slowComponent / LEARNING_DATA.totalLearning) * 100) : 0;
-            learningRateEl.textContent = `${learningRate}%`;
-        }
-        
-        // Show milestone message
-        function showMilestoneMessage() {
-            let message;
-            
-            if (LEARNING_DATA.targetsHit === 10) {
-                message = "Initial learning phase complete! Your cerebellum is adapting.";
-            } else if (LEARNING_DATA.targetsHit === 25) {
-                message = "Fast learning engaged! Your cerebellar cortex is showing activity.";
-            } else if (LEARNING_DATA.targetsHit === 50) {
-                message = "Consolidation beginning! Memory transferring to cerebellar nuclei.";
-            } else if (LEARNING_DATA.targetsHit === 100) {
-                message = "Excellent progress! Long-term motor learning pathways forming.";
-            } else {
-                message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`;
-            }
-            
-            pointMessage.textContent = message;
-            pointMessage.style.display = 'block';
-            pointMessage.classList.remove('fade');
-            
-            setTimeout(() => {
-                pointMessage.classList.add('fade');
-                setTimeout(() => {
-                    pointMessage.style.display = 'none';
-                }, 500);
-            }, 5000);
-        }
-        
-        // Update session time display
-        function updateSessionTime() {
-            const elapsedSec = Math.floor((Date.now() - LEARNING_DATA.sessionStartTime) / 1000);
-            const minutes = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
-            const seconds = (elapsedSec % 60).toString().padStart(2, '0');
-            sessionTimeEl.textContent = `${minutes}:${seconds}`;
-        }
-        
-        // Update score display
-        function updateScoreUI() {
-            scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
-        }
-        
-        // Check device orientation
-        function checkOrientation() {
-            if (window.innerHeight > window.innerWidth) {
-                orientationMessage.style.display = 'flex';
-                scene.pause();
-            } else {
-                orientationMessage.style.display = 'none';
-                scene.play();
-            }
-        }
-        
-        // Check if gaze is within bounds
-        function checkOutOfBounds() {
-            const camera = document.querySelector('a-camera');
-            const cameraRotation = camera.getAttribute('rotation');
-            
-            const yaw = cameraRotation.y;
-            const pitch = cameraRotation.x;
-            
-            const yawLimit = 45;
-            const pitchLimit = 30;
-            
-            if (Math.abs(yaw) > yawLimit || Math.abs(pitch) > pitchLimit) {
-                outOfBoundsMessage.style.display = 'block';
-                if (navigator.vibrate) {
-                    navigator.vibrate(200);
-                }
-                
-                if (LEARNING_DATA.fastComponent > 0) {
-                    LEARNING_DATA.fastComponent *= 0.95;
-                    updateLearningUI();
-                }
-            } else {
-                outOfBoundsMessage.style.display = 'none';
-            }
-        }
-        
-        // Change training mode
-        function changeTrainingMode() {
-            const mode = trainingModeEl.value;
-            ACTIVE_CONFIG = CONFIG[mode];
-            
-            const instructionsEl = document.querySelector('.instructions');
-            
-            switch(mode) {
-                case 'pursuit':
-                    instructionsEl.innerHTML = `
-                        <h3>Pursuit Learning Exercise</h3>
-                        <p>Focus on dots and track them carefully to train smooth pursuit pathways.</p>
-                    `;
-                    break;
-                case 'prediction':
-                    instructionsEl.innerHTML = `
-                        <h3>Prediction Training Exercise</h3>
-                        <p>Anticipate target movements before they occur to enhance predictive motor learning.</p>
-                    `;
-                    break;
-                case 'coordination':
-                    instructionsEl.innerHTML = `
-                        <h3>Coordination Exercise</h3>
-                        <p>Track multiple moving targets to improve complex cerebellar coordination pathways.</p>
-                    `;
-                    break;
-            }
-        }
-        
-        // Toggle VR Stereo Mode
-        function toggleVRStereoMode() {
-            isVRMode = !isVRMode;
-            
-            if (isVRMode) {
-                scene.enterVR();
-                document.body.classList.add('vr-mode');
-                vrStereoToggle.textContent = '🥽 Exit VR Stereo Mode';
-                
-                if (document.documentElement.requestFullscreen) {
-                    document.documentElement.requestFullscreen();
-                }
-                
-                if (screen.orientation && screen.orientation.lock) {
-                    screen.orientation.lock('landscape').catch(err => {
-                        console.log('Orientation lock failed:', err);
-                    });
-                }
-            } else {
-                scene.exitVR();
-                document.body.classList.remove('vr-mode');
-                vrStereoToggle.textContent = '🥽 Enable VR Stereo Mode';
-                
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                }
-            }
-        }
-        
-        // Event listeners
-        window.addEventListener('resize', checkOrientation);
-        window.addEventListener('orientationchange', checkOrientation);
-        trainingModeEl.addEventListener('change', changeTrainingMode);
-        startTrainingBtn.addEventListener('click', () => {
-            initSession();
-            initAudio();
-        });
-        
-        vrStereoToggle.addEventListener('click', () => {
-            toggleVRStereoMode();
-        });
-        
-        scene.addEventListener('enter-vr', () => {
-            isVRMode = true;
-            document.body.classList.add('vr-mode');
-        });
-        
-        scene.addEventListener('exit-vr', () => {
-            isVRMode = false;
-            document.body.classList.remove('vr-mode');
-        });
-        
-        setInterval(checkOutOfBounds, 100);
-        
-        scene.addEventListener('loaded', () => {
-            checkOrientation();
-            changeTrainingMode();
-        });
-    </script>
-</body>
-</html>
