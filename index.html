@@ -71,8 +71,8 @@
 <script>
 /* ---------- CONFIG ---------- */
 const CONFIG = {
-    pursuit:{num:5, spawnDelay:2000, minDist:3, maxDist:6, predictive:false, fuse:1000, speed:0},
-    prediction:{num:4, spawnDelay:3000, minDist:2, maxDist:5, predictive:true, fuse:1500, speed:0.025,
+    pursuit:    {num:5, spawnDelay:2000, minDist:3, maxDist:6, predictive:false, fuse:1000, speed:0},
+    prediction: {num:4, spawnDelay:3000, minDist:2, maxDist:5, predictive:true,  fuse:1500, speed:0.025,
                  rule:"Targets move **clockwise** on a circle (radius 3 m)."},
     coordination:{num:6, spawnDelay:1500, minDist:2.5, maxDist:7, predictive:true, fuse:800, speed:0.035,
                   rule:"Red & blue groups orbit **opposite** directions on two circles."}
@@ -81,237 +81,313 @@ const CONFIG = {
 let ACTIVE = CONFIG.pursuit;
 let DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:0,
             cursorVel:{x:0,y:0},tracking:0,anticip:0};
-let isRunning=false, isVR=false, synth, trails=[];
-let nodPrompt = $('#nod-prompt');
+let isRunning = false, isVR = false, synth = null, trails = [];
 
-/* ---------- HELPERS ---------- */
-const $ = s=>document.querySelector(s);
-const scene=$('a-scene'), hotspots=$('#hotspots'), trailCon=$('#trails');
-const prog=$('.progress-fill'), scoreEl=$('#score'), focusEl=$('#focus-quality'), predEl=$('#learning-rate');
-const timeEl=$('#session-time'), hitEl=$('#targets-hit'), modeSel=$('#training-mode'), startBtn=$('#start-training');
-const vrBtn=$('#vr-stereo-toggle'), msg=$('.point-message'), instr=$('.instructions');
+/* ---------- DOM HELPERS ---------- */
+const $ = s => document.querySelector(s);
+const scene   = $('a-scene');
+const hotspots= $('#hotspots');
+const trailCon= $('#trails');
+const prog    = $('.progress-fill');
+const scoreEl = $('#score');
+const focusEl = $('#focus-quality');
+const predEl  = $('#learning-rate');
+const timeEl  = $('#session-time');
+const hitEl   = $('#targets-hit');
+const modeSel = $('#training-mode');
+const startBtn= $('#start-training');
+const vrBtn   = $('#vr-stereo-toggle');
+const msg     = $('.point-message');
+const instr   = $('.instructions');
+const nodPrompt = $('#nod-prompt');
 
 /* ---------- AUDIO ---------- */
-function initAudio(){if(synth)return;synth=new Tone.Synth({oscillator:{type:"sine"}}).toDestination();
-    window.success=()=>{synth.triggerAttackRelease(["C5","E5","G5"],"16n");};
-    window.focus=q=>{synth.triggerAttackRelease(Tone.Frequency(60+Math.floor(q/5),"midi").toFrequency(),"32n");};
+function initAudio() {
+    if (synth) return;
+    synth = new Tone.Synth({oscillator:{type:"sine"}}).toDestination();
+    window.success = () => synth.triggerAttackRelease(["C5","E5","G5"], "16n");
+    window.focus   = q => synth.triggerAttackRelease(Tone.Frequency(60 + Math.floor(q/5), "midi").toFrequency(), "32n");
 }
 
 /* ---------- HAPTIC ---------- */
-function haptic(){const pad=navigator.getGamepads?.()[0];if(pad?.hapticActuators?.[0])pad.hapticActuators[0].pulse(0.8,100);}
+function hapticPulse() {
+    const pad = navigator.getGamepads?.()[0];
+    if (pad?.hapticActuators?.[0]) pad.hapticActuators[0].pulse(0.8, 100);
+}
 
 /* ---------- CREATE SPHERE ---------- */
-function createSphere(finalPos, color='#667eea'){
-    const el=document.createElement('a-entity');
-    el.setAttribute('position','0 1.6 0');                 // start at centre
-    el.setAttribute('class','hotspot');
-    el.setAttribute('geometry',{primitive:'sphere',radius:/Mobi|Android|iPhone/i.test(navigator.userAgent)?0.3:0.2,
-                               segmentsWidth:32,segmentsHeight:32});
-    el.setAttribute('material',{shader:'standard',color,emissive:color,emissiveIntensity:0.8,metalness:0.1,roughness:0.5});
+function createSphere(finalPos, color = '#667eea') {
+    const el = document.createElement('a-entity');
+
+    // start at centre
+    el.setAttribute('position', '0 1.6 0');
+    el.setAttribute('class', 'hotspot');
+    el.setAttribute('geometry', {
+        primitive: 'sphere',
+        radius: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 0.3 : 0.2,
+        segmentsWidth: 32,
+        segmentsHeight: 32
+    });
+    el.setAttribute('material', {
+        shader: 'standard',
+        color,
+        emissive: color,
+        emissiveIntensity: 0.8,
+        metalness: 0.1,
+        roughness: 0.5
+    });
 
     // pulse glow
-    el.setAttribute('animation__pulse',{property:'material.emissiveIntensity',from:0.6,to:1.2,dur:1200,
-                                        easing:'easeInOutSine',loop:true,dir:'alternate'});
+    el.setAttribute('animation__pulse', {
+        property: 'material.emissiveIntensity',
+        from: 0.6, to: 1.2, dur: 1200,
+        easing: 'easeInOutSine', loop: true, dir: 'alternate'
+    });
 
     // fuse ring
-    const ring=document.createElement('a-entity');
-    ring.setAttribute('geometry',{primitive:'ring',radiusInner:0.28,radiusOuter:0.35});
-    ring.setAttribute('material',{shader:'standard',color:'#fff',opacity:0.8,transparent:true,side:'double'});
-    ring.setAttribute('visible',false);
+    const ring = document.createElement('a-entity');
+    ring.setAttribute('geometry', {primitive:'ring', radiusInner:0.28, radiusOuter:0.35});
+    ring.setAttribute('material', {shader:'standard', color:'#fff', opacity:0.8, transparent:true, side:'double'});
+    ring.setAttribute('visible', false);
     el.appendChild(ring);
 
-    // trail (only predictive)
-    let trail=null;
-    if(ACTIVE.predictive){
-        trail=document.createElement('a-entity');
-        trail.setAttribute('line','color:#764ba2;opacity:0.4');
+    // trail (predictive modes only)
+    let trail = null;
+    if (ACTIVE.predictive) {
+        trail = document.createElement('a-entity');
+        trail.setAttribute('line', 'color:#764ba2;opacity:0.4');
         trailCon.appendChild(trail);
-        trails.push({el:trail,points:[]});
+        trails.push({el: trail, points: []});
     }
 
     // interaction
-    let focusStart=0;
-    el.addEventListener('mouseenter',()=>{focusStart=Date.now();ring.setAttribute('visible',true);
-        ring.setAttribute('animation',{property:'geometry.thetaLength',from:0,to:360,dur:ACTIVE.fuse,easing:'linear'});});
-    el.addEventListener('mouseleave',()=>{ring.setAttribute('visible',false);ring.removeAttribute('animation');
-        ring.setAttribute('geometry',{thetaLength:0});});
-    el.addEventListener('click',()=>{
-        const qual=Math.min(100,(Date.now()-focusStart)/ACTIVE.fuse*100);
-        const enhanced=qual*0.4+DATA.tracking*0.3+DATA.anticip*0.3;
-        DATA.focus=enhanced; focusEl.textContent=Math.round(enhanced)+'%';
-        if(synth){focus(enhanced);setTimeout(success,200);}
-        haptic();
+    let focusStart = 0;
+    el.addEventListener('mouseenter', () => {
+        focusStart = Date.now();
+        ring.setAttribute('visible', true);
+        ring.setAttribute('animation', {
+            property: 'geometry.thetaLength',
+            from: 0, to: 360, dur: ACTIVE.fuse, easing: 'linear'
+        });
+    });
+    el.addEventListener('mouseleave', () => {
+        ring.setAttribute('visible', false);
+        ring.removeAttribute('animation');
+        ring.setAttribute('geometry', {thetaLength: 0});
+    });
+    el.addEventListener('click', () => {
+        const qual = Math.min(100, (Date.now() - focusStart) / ACTIVE.fuse * 100);
+        const enhanced = qual * 0.4 + DATA.tracking * 0.3 + DATA.anticip * 0.3;
+        DATA.focus = enhanced;
+        focusEl.textContent = Math.round(enhanced) + '%';
+        if (synth) { focus(enhanced); setTimeout(success, 200); }
+        hapticPulse();
 
-        // learning
-        DATA.trials++; const f=enhanced/100;
-        if(DATA.trials<20) DATA.fast+=10*f;
-        else DATA.fast=DATA.fast*0.85+5*f;
-        DATA.slow=DATA.slow*0.96+2*f*Math.log(DATA.trials+1);
-        DATA.total=DATA.fast+DATA.slow;
-        prog.style.width=Math.min(100,(DATA.total/200)*100)+'%';
-        scoreEl.textContent=Math.floor(DATA.total);
-        hitEl.textContent=++DATA.hits;
+        // learning model
+        DATA.trials++;
+        const f = enhanced / 100;
+        if (DATA.trials < 20) DATA.fast += 10 * f;
+        else DATA.fast = DATA.fast * 0.85 + 5 * f;
+        DATA.slow = DATA.slow * 0.96 + 2 * f * Math.log(DATA.trials + 1);
+        DATA.total = DATA.fast + DATA.slow;
+        prog.style.width = Math.min(100, (DATA.total / 200) * 100) + '%';
+        scoreEl.textContent = Math.floor(DATA.total);
+        hitEl.textContent = ++DATA.hits;
 
-        // remove
-        el.setAttribute('animation__scale',{property:'scale',to:'0 0 0',dur:300,easing:'easeInQuad'});
-        setTimeout(()=>{hotspots.removeChild(el);},350);
-        if(trail)trailCon.removeChild(trail);
-        setTimeout(()=>spawnOne(),ACTIVE.spawnDelay);
+        // disappear
+        el.setAttribute('animation__scale', {
+            property: 'scale', to: '0 0 0', dur: 300, easing: 'easeInQuad'
+        });
+        setTimeout(() => { hotspots.removeChild(el); }, 350);
+        if (trail) trailCon.removeChild(trail);
+        setTimeout(() => spawnOne(), ACTIVE.spawnDelay);
     });
 
-    // movement (prediction / coordination)
-    if(ACTIVE.predictive){
-        const start=performance.now();
-        const radius=ACTIVE===CONFIG.prediction?3:(finalPos.x>0?4:2.5);
-        const dir=ACTIVE===CONFIG.coordination?(finalPos.x>0?1:-1):1;
-        el.tick=(t,dt)=>{
-            const elapsed=(t-start)/1000;
-            const angle=dir*elapsed*ACTIVE.speed;
-            const x=radius*Math.cos(angle);
-            const z=radius*Math.sin(angle)-4;
-            el.setAttribute('position',{x,y:finalPos.y,z});
-            if(trail)trail.setAttribute('line',{start:`${x} ${finalPos.y} ${z}`,end:`${x} ${finalPos.y} ${z}`});
+    // movement for predictive modes
+    if (ACTIVE.predictive) {
+        const start = performance.now();
+        const radius = ACTIVE === CONFIG.prediction ? 3 : (finalPos.x > 0 ? 4 : 2.5);
+        const dir    = ACTIVE === CONFIG.coordination ? (finalPos.x > 0 ? 1 : -1) : 1;
+        el.tick = (t, dt) => {
+            const elapsed = (t - start) / 1000;
+            const angle = dir * elapsed * ACTIVE.speed;
+            const x = radius * Math.cos(angle);
+            const z = radius * Math.sin(angle) - 4;
+            el.setAttribute('position', {x, y: finalPos.y, z});
+            if (trail) {
+                const cur = `${x} ${finalPos.y} ${z}`;
+                const attr = trail.getAttribute('line');
+                if (attr.start) trail.setAttribute('line', {start: attr.start, end: cur});
+                else trail.setAttribute('line', {start: cur, end: cur});
+            }
         };
     }
 
     // animate from centre → finalPos
-    el.setAttribute('animation__move',{property:'position',to:`${finalPos.x} ${finalPos.y} ${finalPos.z}`,
-                                      dur:800,easing:'easeOutQuad'});
+    el.setAttribute('animation__move', {
+        property: 'position',
+        to: `${finalPos.x} ${finalPos.y} ${finalPos.z}`,
+        dur: 800,
+        easing: 'easeOutQuad'
+    });
 
     hotspots.appendChild(el);
     return el;
 }
 
-/* ---------- SPAWN ONE (deterministic) ---------- */
-function spawnOne(){
-    if(!isRunning) return;
+/* ---------- SPAWN ONE ---------- */
+function spawnOne() {
+    if (!isRunning) return;
     let finalPos;
-    if(ACTIVE===CONFIG.prediction){
-        const i=DATA.hits%8;
-        const a=i*Math.PI/4;
-        finalPos={x:3*Math.cos(a),y:0.2+Math.random()*0.4,z:3*Math.sin(a)-4};
-    }else if(ACTIVE===CONFIG.coordination){
-        const group=DATA.hits%2===0?'red':'blue';
-        const radius=group==='red'?4:2.5;
-        const i=Math.floor(DATA.hits/2)%8;
-        const a=i*Math.PI/4;
-        finalPos={x:radius*Math.cos(a),y:0.2+Math.random()*0.4,z:radius*Math.sin(a)-4};
-    }else{
-        finalPos={x:(Math.random()*3)-1.5,y:(Math.random()*2)-0.5,
-                  z:-(Math.random()*(ACTIVE.maxDist-ACTIVE.minDist)+ACTIVE.minDist)};
+    if (ACTIVE === CONFIG.prediction) {
+        const i = DATA.hits % 8;
+        const a = i * Math.PI / 4;
+        finalPos = {x: 3 * Math.cos(a), y: 0.2 + Math.random() * 0.4, z: 3 * Math.sin(a) - 4};
+    } else if (ACTIVE === CONFIG.coordination) {
+        const group = DATA.hits % 2 === 0 ? 'red' : 'blue';
+        const radius = group === 'red' ? 4 : 2.5;
+        const i = Math.floor(DATA.hits / 2) % 8;
+        const a = i * Math.PI / 4;
+        finalPos = {x: radius * Math.cos(a), y: 0.2 + Math.random() * 0.4, z: radius * Math.sin(a) - 4};
+    } else {
+        finalPos = {
+            x: (Math.random() * 3) - 1.5,
+            y: (Math.random() * 2) - 0.5,
+            z: -(Math.random() * (ACTIVE.maxDist - ACTIVE.minDist) + ACTIVE.minDist)
+        };
     }
-    const color=ACTIVE===CONFIG.coordination?(DATA.hits%2===0?'#ff5555':'#5555ff'):'#667eea';
-    createSphere(finalPos,color);
+    const color = ACTIVE === CONFIG.coordination ? (DATA.hits % 2 === 0 ? '#ff5555' : '#5555ff') : '#667eea';
+    createSphere(finalPos, color);
 }
 
 /* ---------- CURSOR TRACKING ---------- */
-let lastCam=null;
-setInterval(()=>{
-    if(!isRunning) return;
-    const cam=document.querySelector('a-camera');
-    if(!cam) return;
-    const rot=cam.getAttribute('rotation');
-    const cur={x:rot.y,y:rot.x,t:Date.now()};
-    if(lastCam){
-        const dt=(cur.t-lastCam.t)/1000;
-        if(dt>0) DATA.cursorVel={x:(cur.x-lastCam.x)/dt,y:(cur.y-lastCam.y)/dt};
+let lastCam = null;
+setInterval(() => {
+    if (!isRunning) return;
+    const cam = document.querySelector('a-camera');
+    if (!cam) return;
+    const rot = cam.getAttribute('rotation');
+    const cur = {x: rot.y, y: rot.x, t: Date.now()};
+    if (lastCam) {
+        const dt = (cur.t - lastCam.t) / 1000;
+        if (dt > 0) DATA.cursorVel = {x: (cur.x - lastCam.x) / dt, y: (cur.y - lastCam.y) / dt};
     }
-    lastCam=cur;
+    lastCam = cur;
 
-    const targets=document.querySelectorAll('.hotspot');
-    let min=Infinity;
-    targets.forEach(t=>{
-        const p=t.getAttribute('position');
-        const dx=Math.atan2(p.x,-p.z)*(180/Math.PI)-rot.y;
-        const dy=Math.atan2(p.y,-p.z)*(180/Math.PI)-rot.x;
-        const d=Math.hypot(dx,dy);
-        if(d<min) min=d;
+    // nearest target distance
+    const targets = document.querySelectorAll('.hotspot');
+    let min = Infinity;
+    targets.forEach(t => {
+        const p = t.getAttribute('position');
+        const dx = Math.atan2(p.x, -p.z) * (180 / Math.PI) - rot.y;
+        const dy = Math.atan2(p.y, -p.z) * (180 / Math.PI) - rot.x;
+        const d = Math.hypot(dx, dy);
+        if (d < min) min = d;
     });
-    DATA.tracking=Math.max(0,100-min*8);
-    const pred={x:cur.x+DATA.cursorVel.x*0.5,y:cur.y+DATA.cursorVel.y*0.5};
-    // anticipation (simplified)
-    DATA.anticip=Math.max(0,100-min*6);
-    DATA.predEff=DATA.tracking*0.4+DATA.anticip*0.6;
-    predEl.textContent=Math.round(DATA.predEff)+'%';
-},50);
+    DATA.tracking = Math.max(0, 100 - min * 8);
+    DATA.anticip  = Math.max(0, 100 - min * 6);
+    DATA.predEff  = DATA.tracking * 0.4 + DATA.anticip * 0.6;
+    predEl.textContent = Math.round(DATA.predEff) + '%';
+}, 50);
 
 /* ---------- NOD TO CONTINUE ---------- */
-let nodState='waitDown';
-function startNodPrompt(){
-    nodPrompt.style.display='block';
-    nodState='waitDown';
+let nodState = 'waitDown';
+function startNodPrompt() {
+    nodPrompt.style.display = 'block';
+    nodState = 'waitDown';
 }
-function endNodPrompt(){
-    nodPrompt.style.display='none';
-    // now spawn the first batch
-    for(let i=0;i<ACTIVE.num;i++) setTimeout(spawnOne,i*400);
+function endNodPrompt() {
+    nodPrompt.style.display = 'none';
+    // spawn the first batch
+    for (let i = 0; i < ACTIVE.num; i++) setTimeout(spawnOne, i * 400);
 }
-AFRAME.registerComponent('nod-listener',{
-    tick:function(){
-        if(!isRunning) return;
-        const cam=this.el;
-        const pitch=cam.getAttribute('rotation').x;
-        if(nodState==='waitDown' && pitch>20) nodState='down';
-        else if(nodState==='down' && pitch<-10){ endNodPrompt(); this.el.removeAttribute('nod-listener'); }
+AFRAME.registerComponent('nod-listener', {
+    tick: function () {
+        if (!isRunning) return;
+        const pitch = this.el.getAttribute('rotation').x;
+        if (nodState === 'waitDown' && pitch > 20) nodState = 'down';
+        else if (nodState === 'down' && pitch < -10) {
+            endNodPrompt();
+            this.el.removeAttribute('nod-listener');
+        }
     }
 });
 
 /* ---------- SESSION ---------- */
-function startSession(){
+function startSession() {
     // reset
-    DATA={trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:Date.now(),
-          cursorVel:{x:0,y:0},tracking:0,anticip:0};
-    isRunning=true;
-    hotspots.innerHTML=''; trailCon.innerHTML=''; trails=[];
-    prog.style.width='0%';
-    scoreEl.textContent='0'; focusEl.textContent='0%'; predEl.textContent='0%';
-    hitEl.textContent='0';
-    setInterval(()=>{const s=Math.floor((Date.now()-DATA.startTime)/1000);
-        timeEl.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;},500);
+    DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:Date.now(),
+            cursorVel:{x:0,y:0},tracking:0,anticip:0};
+    isRunning = true;
+    hotspots.innerHTML = ''; trailCon.innerHTML = ''; trails = [];
+    prog.style.width = '0%';
+    scoreEl.textContent = '0'; focusEl.textContent = '0%'; predEl.textContent = '0%';
+    hitEl.textContent = '0';
+    setInterval(() => {
+        const s = Math.floor((Date.now() - DATA.startTime) / 1000);
+        timeEl.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    }, 500);
 
-    // show nod prompt (works in VR & mobile)
+    // show nod prompt
     startNodPrompt();
-    document.querySelector('a-camera').setAttribute('nod-listener','');
+    document.querySelector('a-camera').setAttribute('nod-listener', '');
 }
-startBtn.onclick=()=>{initAudio();startSession();};
+startBtn.onclick = () => { initAudio(); startSession(); };
 
 /* ---------- MODE SWITCH ---------- */
-modeSel.onchange=()=>{
-    const m=modeSel.value; ACTIVE=CONFIG[m];
-    let txt=`<h3>${m.charAt(0).toUpperCase()+m.slice(1)} Mode</h3><p>`;
-    if(m==='prediction') txt+=CONFIG.prediction.rule;
-    else if(m==='coordination') txt+=CONFIG.coordination.rule;
-    else txt+='Track the moving spheres smoothly.';
-    txt+='</p>'; instr.innerHTML=txt;
+modeSel.onchange = () => {
+    const m = modeSel.value;
+    ACTIVE = CONFIG[m];
+    let txt = `<h3>${m.charAt(0).toUpperCase() + m.slice(1)} Mode</h3><p>`;
+    if (m === 'prediction') txt += CONFIG.prediction.rule;
+    else if (m === 'coordination') txt += CONFIG.coordination.rule;
+    else txt += 'Track the moving spheres smoothly.';
+    txt += '</p>';
+    instr.innerHTML = txt;
 };
 modeSel.dispatchEvent(new Event('change'));
 
 /* ---------- VR TOGGLE ---------- */
-vrBtn.onclick=async()=>{isVR=!isVR;
-    if(isVR){await scene.enterVR();document.body.classList.add('vr-mode');vrBtn.textContent='Exit VR Stereo Mode';
-        if(screen.orientation?.lock)screen.orientation.lock('landscape').catch(()=>{});
-    }else{await scene.exitVR();document.body.classList.remove('vr-mode');vrBtn.textContent='Enable VR Stereo Mode';}
+vrBtn.onclick = async () => {
+    isVR = !isVR;
+    if (isVR) {
+        await scene.enterVR();
+        document.body.classList.add('vr-mode');
+        vrBtn.textContent = 'Exit VR Stereo Mode';
+        if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(() => {});
+    } else {
+        await scene.exitVR();
+        document.body.classList.remove('vr-mode');
+        vrBtn.textContent = 'Enable VR Stereo Mode';
+    }
 };
-scene.addEventListener('enter-vr',()=>{isVR=true;document.body.classList.add('vr-mode');});
-scene.addEventListener('exit-vr',()=>{isVR=false;document.body.classList.remove('vr-mode');});
+scene.addEventListener('enter-vr', () => { isVR = true; document.body.classList.add('vr-mode'); });
+scene.addEventListener('exit-vr', () => { isVR = false; document.body.classList.remove('vr-mode'); });
 
 /* ---------- ORIENTATION / BOUNDS ---------- */
-window.addEventListener('resize',checkOri);
-window.addEventListener('orientationchange',checkOri);
-function checkOri(){
-    if(innerHeight>innerWidth){$('#orientation-message').style.display='flex';scene.pause();}
-    else{$('#orientation-message').style.display='none';scene.play();}
+window.addEventListener('resize', checkOri);
+window.addEventListener('orientationchange', checkOri);
+function checkOri() {
+    if (innerHeight > innerWidth) {
+        $('#orientation-message').style.display = 'flex';
+        scene.pause();
+    } else {
+        $('#orientation-message').style.display = 'none';
+        scene.play();
+    }
 }
-setInterval(()=>{
-    const cam=document.querySelector('a-camera');
-    if(!cam) return;
-    const r=cam.getAttribute('rotation');
-    if(Math.abs(r.y)>45||Math.abs(r.x)>30){
-        $('.out-of-bounds-message').style.display='block';
-        if(navigator.vibrate)navigator.vibrate(100);
-        DATA.fast*=0.94;
-    }else $('.out-of-bounds-message').style.display='none';
-},120);
+setInterval(() => {
+    const cam = document.querySelector('a-camera');
+    if (!cam) return;
+    const r = cam.getAttribute('rotation');
+    if (Math.abs(r.y) > 45 || Math.abs(r.x) > 30) {
+        $('.out-of-bounds-message').style.display = 'block';
+        if (navigator.vibrate) navigator.vibrate(100);
+        DATA.fast *= 0.94;
+    } else {
+        $('.out-of-bounds-message').style.display = 'none';
+    }
+}, 120);
 checkOri();
 </script>
 </body>
