@@ -1,437 +1,316 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StayStable – Cerebellar Rehabilitation VR</title>
-
-    <!-- A-Frame (WebXR) -->
-    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-
-    <!-- Tone.js for audio -->
-    <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.min.js"></script>
-
-    <style>
-        body {margin:0;overflow:hidden;background:#111;font-family:Arial,sans-serif;}
-        .instructions,.data-panel,.session-stats,.mode-selector,.vr-stereo-mode,.progress-bar{
-            position:fixed;z-index:999;padding:12px;border-radius:8px;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);
-        }
-        .instructions{top:15px;left:15px;background:rgba(102,126,234,.9);max-width:340px;}
-        .data-panel{top:15px;right:15px;background:rgba(118,75,162,.9);min-width:180px;}
-        .session-stats{bottom:15px;right:15px;background:rgba(118,75,162,.9);}
-        .mode-selector{bottom:15px;left:15px;background:rgba(102,126,234,.9);}
-        .vr-stereo-mode{bottom:100px;left:50%;transform:translateX(-50%);background:rgba(102,126,234,.9);cursor:pointer;}
-        .progress-bar{bottom:70px;left:50%;transform:translateX(-50%);width:300px;height:18px;background:rgba(255,255,255,.2);border-radius:9px;overflow:hidden;}
-        .progress-fill{height:100%;width:0;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .4s;}
-        .point-message{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:rgba(102,126,234,.95);padding:12px;border-radius:8px;display:none;}
-        .out-of-bounds-message{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,.8);color:#fff;padding:20px;border-radius:10px;display:none;font-size:1.4rem;}
-        .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:999;}
-        .crosshair::before,.crosshair::after{content:'';position:absolute;background:#fff;box-shadow:0 0 3px rgba(0,0,0,.5);}
-        .crosshair::before{width:2px;height:20px;left:50%;top:50%;transform:translate(-50%,-50%);}
-        .crosshair::after{width:20px;height:2px;left:50%;top:50%;transform:translate(-50%,-50%);}
-        body.vr-mode .instructions,body.vr-mode .data-panel,body.vr-mode .session-stats,
-        body.vr-mode .mode-selector,body.vr-mode .vr-stereo-mode,body.vr-mode .progress-bar{display:none !important;}
-        body.vr-mode .crosshair{display:block !important;}
-    </style>
+<meta charset="UTF-8">
+<title>StayStable – Cerebellar Rehab VR</title>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.min.js"></script>
+<style>
+    body{margin:0;overflow:hidden;background:#111;font-family:Arial,sans-serif;}
+    .ui{position:fixed;z-index:999;padding:12px;border-radius:8px;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);}
+    .instructions{top:15px;left:15px;background:rgba(102,126,234,.9);max-width:340px;}
+    .data-panel{top:15px;right:15px;background:rgba(118,75,162,.9);min-width:180px;}
+    .session-stats{bottom:15px;right:15px;background:rgba(118,75,162,.9);}
+    .mode-selector{bottom:15px;left:15px;background:rgba(102,126,234,.9);}
+    .vr-stereo-mode{bottom:100px;left:50%;transform:translateX(-50%);background:rgba(102,126,234,.9);cursor:pointer;}
+    .progress-bar{bottom:70px;left:50%;transform:translateX(-50%);width:300px;height:18px;background:rgba(255,255,255,.2);border-radius:9px;overflow:hidden;}
+    .progress-fill{height:100%;width:0;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .4s;}
+    .point-message{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:rgba(102,126,234,.95);padding:12px;border-radius:8px;display:none;}
+    .out-of-bounds-message{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,.8);color:#fff;padding:20px;border-radius:10px;display:none;font-size:1.4rem;}
+    .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:999;}
+    .crosshair::before,.crosshair::after{content:'';position:absolute;background:#fff;box-shadow:0 0 3px rgba(0,0,0,.5);}
+    .crosshair::before{width:2px;height:20px;left:50%;top:50%;transform:translate(-50%,-50%);}
+    .crosshair::after{width:20px;height:2px;left:50%;top:50%;transform:translate(-50%,-50%);}
+    body.vr-mode .ui{display:none !important;}
+    body.vr-mode .crosshair{display:block !important;}
+    #nod-prompt{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:30px;border-radius:12px;text-align:center;font-size:1.3rem;z-index:1000;display:none;}
+</style>
 </head>
 <body>
-    <div id="orientation-message" style="display:none;">Please rotate to landscape</div>
 
-    <div class="instructions">
-        <h3>Cerebellar Rehabilitation</h3>
-        <p>Focus on the glowing spheres and follow the rules of the selected mode.</p>
-    </div>
+<div id="orientation-message" style="display:none;">Please rotate to landscape</div>
 
-    <div class="crosshair"></div>
+<div class="ui instructions"><h3>Cerebellar Rehabilitation</h3><p>Focus on the glowing spheres.</p></div>
+<div class="crosshair"></div>
 
-    <div class="data-panel">
-        <div>Score: <span id="score">0</span></div>
-        <div>Focus: <span id="focus-quality">0%</span></div>
-        <div>Prediction: <span id="learning-rate">0%</span></div>
-    </div>
+<div class="ui data-panel">
+    <div>Score: <span id="score">0</span></div>
+    <div>Focus: <span id="focus-quality">0%</span></div>
+    <div>Prediction: <span id="learning-rate">0%</span></div>
+</div>
 
-    <div class="progress-bar"><div class="progress-fill"></div></div>
+<div class="progress-bar"><div class="progress-fill"></div></div>
+<div class="point-message"></div>
+<div class="out-of-bounds-message">Return to centre</div>
 
-    <div class="point-message"></div>
-    <div class="out-of-bounds-message">Return to centre</div>
+<div class="ui session-stats">
+    <div>Time: <span id="session-time">00:00</span></div>
+    <div>Hits: <span id="targets-hit">0</span></div>
+</div>
 
-    <div class="session-stats">
-        <div>Time: <span id="session-time">00:00</span></div>
-        <div>Hits: <span id="targets-hit">0</span></div>
-    </div>
+<div class="ui mode-selector">
+    <select id="training-mode">
+        <option value="pursuit">Pursuit</option>
+        <option value="prediction">Prediction</option>
+        <option value="coordination">Coordination</option>
+    </select>
+    <button id="start-training">Start</button>
+</div>
 
-    <div class="mode-selector">
-        <select id="training-mode">
-            <option value="pursuit">Pursuit</option>
-            <option value="prediction">Prediction</option>
-            <option value="coordination">Coordination</option>
-        </select>
-        <button id="start-training">Start</button>
-    </div>
+<button class="ui vr-stereo-mode" id="vr-stereo-toggle">Enable VR Stereo Mode</button>
 
-    <button class="vr-stereo-mode" id="vr-stereo-toggle">Enable VR Stereo Mode</button>
+<div id="nod-prompt">Nod <strong>down → up</strong> to start</div>
 
-    <a-scene raycaster="objects: .hotspot; far: 30" vr-mode-ui="enabled: true"
-             device-orientation-permission-ui="enabled: true" background="color:#f0e6ff">
-        <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true"></a-camera>
-        <a-entity id="hotspots"></a-entity>
-        <a-entity id="trails"></a-entity>
-    </a-scene>
+<a-scene raycaster="objects: .hotspot; far: 30" vr-mode-ui="enabled: true"
+         device-orientation-permission-ui="enabled: true" background="color:#f0e6ff">
+    <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true"></a-camera>
+    <a-entity id="hotspots"></a-entity>
+    <a-entity id="trails"></a-entity>
+</a-scene>
 
 <script>
-/* --------------------------------------------------------------
-   CONFIG – three deterministic modes
-   -------------------------------------------------------------- */
+/* ---------- CONFIG ---------- */
 const CONFIG = {
-    pursuit: {
-        num: 5, spawnDelay: 2000, minDist: 3, maxDist: 6,
-        predictive: false, fuse: 1000, speed: 0
-    },
-    prediction: {
-        num: 4, spawnDelay: 3000, minDist: 2, maxDist: 5,
-        predictive: true, fuse: 1500, speed: 0.025,
-        rule: "Targets move **clockwise** on a circle (radius 3 m). Anticipate the next position."
-    },
-    coordination: {
-        num: 6, spawnDelay: 1500, minDist: 2.5, maxDist: 7,
-        predictive: true, fuse: 800, speed: 0.035,
-        rule: "Two groups (red & blue) orbit **opposite** directions on two concentric circles."
-    }
+    pursuit:{num:5, spawnDelay:2000, minDist:3, maxDist:6, predictive:false, fuse:1000, speed:0},
+    prediction:{num:4, spawnDelay:3000, minDist:2, maxDist:5, predictive:true, fuse:1500, speed:0.025,
+                 rule:"Targets move **clockwise** on a circle (radius 3 m)."},
+    coordination:{num:6, spawnDelay:1500, minDist:2.5, maxDist:7, predictive:true, fuse:800, speed:0.035,
+                  rule:"Red & blue groups orbit **opposite** directions on two circles."}
 };
 
-/* --------------------------------------------------------------
-   STATE
-   -------------------------------------------------------------- */
 let ACTIVE = CONFIG.pursuit;
-let DATA = {
-    trials:0, hits:0, fast:0, slow:0, total:0,
-    focus:0, predEff:0, startTime:0,
-    cursorPos:null, cursorVel:{x:0,y:0}
-};
-let isRunning = false, isVR = false, synth, trails = [];
+let DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:0,
+            cursorVel:{x:0,y:0},tracking:0,anticip:0};
+let isRunning=false, isVR=false, synth, trails=[];
+let nodPrompt = $('#nod-prompt');
 
-/* --------------------------------------------------------------
-   AUDIO
-   -------------------------------------------------------------- */
-function initAudio(){
-    if(synth) return;
-    synth = new Tone.Synth({oscillator:{type:"sine"}}).toDestination();
-    window.success = ()=>{synth.triggerAttackRelease(["C5","E5","G5"], "16n");};
-    window.fail    = ()=>{synth.triggerAttackRelease(["A3","G3"], "16n");};
-    window.focus   = q=>{synth.triggerAttackRelease(Tone.Frequency(60+Math.floor(q/5),"midi").toFrequency(),"32n");};
-}
-
-/* --------------------------------------------------------------
-   DOM shortcuts
-   -------------------------------------------------------------- */
+/* ---------- HELPERS ---------- */
 const $ = s=>document.querySelector(s);
-const scene   = $('a-scene');
-const hotspots= $('#hotspots');
-const trailCon= $('#trails');
-const prog    = $('.progress-fill');
-const scoreEl = $('#score');
-const focusEl = $('#focus-quality');
-const predEl  = $('#learning-rate');
-const timeEl  = $('#session-time');
-const hitEl   = $('#targets-hit');
-const modeSel = $('#training-mode');
-const startBtn= $('#start-training');
-const vrBtn   = $('#vr-stereo-toggle');
-const msg     = $('.point-message');
-const instr   = $('.instructions');
+const scene=$('a-scene'), hotspots=$('#hotspots'), trailCon=$('#trails');
+const prog=$('.progress-fill'), scoreEl=$('#score'), focusEl=$('#focus-quality'), predEl=$('#learning-rate');
+const timeEl=$('#session-time'), hitEl=$('#targets-hit'), modeSel=$('#training-mode'), startBtn=$('#start-training');
+const vrBtn=$('#vr-stereo-toggle'), msg=$('.point-message'), instr=$('.instructions');
 
-/* --------------------------------------------------------------
-   HAPTIC (WebXR gamepad)
-   -------------------------------------------------------------- */
-function hapticPulse(intensity=0.8, dur=100){
-    if(!navigator.getGamepads) return;
-    const pad = navigator.getGamepads()[0];
-    if(pad && pad.hapticActuators && pad.hapticActuators[0]){
-        pad.hapticActuators[0].pulse(intensity, dur);
-    }
+/* ---------- AUDIO ---------- */
+function initAudio(){if(synth)return;synth=new Tone.Synth({oscillator:{type:"sine"}}).toDestination();
+    window.success=()=>{synth.triggerAttackRelease(["C5","E5","G5"],"16n");};
+    window.focus=q=>{synth.triggerAttackRelease(Tone.Frequency(60+Math.floor(q/5),"midi").toFrequency(),"32n");};
 }
 
-/* --------------------------------------------------------------
-   CREATE SPHERE + PULSE + TRAIL
-   -------------------------------------------------------------- */
-function createSphere(pos, color='#667eea'){
-    const el = document.createElement('a-entity');
-    el.setAttribute('position', pos);
+/* ---------- HAPTIC ---------- */
+function haptic(){const pad=navigator.getGamepads?.()[0];if(pad?.hapticActuators?.[0])pad.hapticActuators[0].pulse(0.8,100);}
+
+/* ---------- CREATE SPHERE ---------- */
+function createSphere(finalPos, color='#667eea'){
+    const el=document.createElement('a-entity');
+    el.setAttribute('position','0 1.6 0');                 // start at centre
     el.setAttribute('class','hotspot');
-    el.setAttribute('geometry',{
-        primitive:'sphere',
-        radius: /Mobi|Android|iPhone/i.test(navigator.userAgent)?0.3:0.2,
-        segmentsWidth:32,
-        segmentsHeight:32
-    });
-    el.setAttribute('material',{
-        shader:'standard',
-        color,
-        emissive:color,
-        emissiveIntensity:0.8,
-        metalness:0.1,
-        roughness:0.5
-    });
+    el.setAttribute('geometry',{primitive:'sphere',radius:/Mobi|Android|iPhone/i.test(navigator.userAgent)?0.3:0.2,
+                               segmentsWidth:32,segmentsHeight:32});
+    el.setAttribute('material',{shader:'standard',color,emissive:color,emissiveIntensity:0.8,metalness:0.1,roughness:0.5});
 
-    /* ---- GLOW PULSE ---- */
-    el.setAttribute('animation__pulse',{
-        property:'material.emissiveIntensity',
-        from:0.6, to:1.2, dur:1200,
-        easing:'easeInOutSine', loop:true, dir:'alternate'
-    });
+    // pulse glow
+    el.setAttribute('animation__pulse',{property:'material.emissiveIntensity',from:0.6,to:1.2,dur:1200,
+                                        easing:'easeInOutSine',loop:true,dir:'alternate'});
 
-    /* ---- FUSE RING ---- */
-    const ring = document.createElement('a-entity');
-    ring.setAttribute('geometry',{
-        primitive:'ring',
-        radiusInner:0.28,
-        radiusOuter:0.35
-    });
-    ring.setAttribute('material',{
-        shader:'standard',
-        color:'#fff',
-        opacity:0.8,
-        transparent:true,
-        side:'double'
-    });
+    // fuse ring
+    const ring=document.createElement('a-entity');
+    ring.setAttribute('geometry',{primitive:'ring',radiusInner:0.28,radiusOuter:0.35});
+    ring.setAttribute('material',{shader:'standard',color:'#fff',opacity:0.8,transparent:true,side:'double'});
     ring.setAttribute('visible',false);
     el.appendChild(ring);
 
-    /* ---- TRAIL (only in predictive modes) ---- */
-    let trail = null;
+    // trail (only predictive)
+    let trail=null;
     if(ACTIVE.predictive){
-        trail = document.createElement('a-entity');
+        trail=document.createElement('a-entity');
         trail.setAttribute('line','color:#764ba2;opacity:0.4');
         trailCon.appendChild(trail);
-        trails.push({el:trail, points:[]});
+        trails.push({el:trail,points:[]});
     }
 
-    /* ---- INTERACTION ---- */
+    // interaction
     let focusStart=0;
-    el.addEventListener('mouseenter',()=>{
-        focusStart = Date.now();
-        ring.setAttribute('visible',true);
-        ring.setAttribute('animation',{
-            property:'geometry.thetaLength',
-            from:0, to:360, dur:ACTIVE.fuse,
-            easing:'linear'
-        });
-    });
-    el.addEventListener('mouseleave',()=>{
-        ring.setAttribute('visible',false);
-        ring.removeAttribute('animation');
-        ring.setAttribute('geometry',{thetaLength:0});
-    });
+    el.addEventListener('mouseenter',()=>{focusStart=Date.now();ring.setAttribute('visible',true);
+        ring.setAttribute('animation',{property:'geometry.thetaLength',from:0,to:360,dur:ACTIVE.fuse,easing:'linear'});});
+    el.addEventListener('mouseleave',()=>{ring.setAttribute('visible',false);ring.removeAttribute('animation');
+        ring.setAttribute('geometry',{thetaLength:0});});
     el.addEventListener('click',()=>{
-        const dur = Date.now()-focusStart;
-        const qual = Math.min(100, (dur/ACTIVE.fuse)*100);
-        const enhanced = qual*0.4 + DATA.tracking*0.3 + DATA.anticip*0.3;
-        DATA.focus = enhanced;
-        focusEl.textContent = Math.round(enhanced)+'%';
-        if(synth) {focus(enhanced); setTimeout(success,200);}
-        hapticPulse();
+        const qual=Math.min(100,(Date.now()-focusStart)/ACTIVE.fuse*100);
+        const enhanced=qual*0.4+DATA.tracking*0.3+DATA.anticip*0.3;
+        DATA.focus=enhanced; focusEl.textContent=Math.round(enhanced)+'%';
+        if(synth){focus(enhanced);setTimeout(success,200);}
+        haptic();
 
-        // learning model
-        DATA.trials++;
-        const factor = enhanced/100;
-        if(DATA.trials<20) DATA.fast += 10*factor;
-        else { DATA.fast = DATA.fast*(1-0.15) + 5*factor; }
-        DATA.slow = DATA.slow*(1-0.04) + 2*factor*Math.log(DATA.trials+1);
-        DATA.total = DATA.fast + DATA.slow;
-        prog.style.width = Math.min(100,(DATA.total/200)*100)+'%';
-        scoreEl.textContent = Math.floor(DATA.total);
-        hitEl.textContent = ++DATA.hits;
+        // learning
+        DATA.trials++; const f=enhanced/100;
+        if(DATA.trials<20) DATA.fast+=10*f;
+        else DATA.fast=DATA.fast*0.85+5*f;
+        DATA.slow=DATA.slow*0.96+2*f*Math.log(DATA.trials+1);
+        DATA.total=DATA.fast+DATA.slow;
+        prog.style.width=Math.min(100,(DATA.total/200)*100)+'%';
+        scoreEl.textContent=Math.floor(DATA.total);
+        hitEl.textContent=++DATA.hits;
 
         // remove
-        el.setAttribute('animation__scale',{
-            property:'scale', to:'0 0 0', dur:300, easing:'easeInQuad'
-        });
-        setTimeout(()=>{ hotspots.removeChild(el); },350);
-        if(trail) trailCon.removeChild(trail);
-        setTimeout(()=>spawnOne(), ACTIVE.spawnDelay);
+        el.setAttribute('animation__scale',{property:'scale',to:'0 0 0',dur:300,easing:'easeInQuad'});
+        setTimeout(()=>{hotspots.removeChild(el);},350);
+        if(trail)trailCon.removeChild(trail);
+        setTimeout(()=>spawnOne(),ACTIVE.spawnDelay);
     });
 
-    /* ---- MOVEMENT (prediction / coordination) ---- */
+    // movement (prediction / coordination)
     if(ACTIVE.predictive){
-        const start = performance.now();
-        const radius = ACTIVE===CONFIG.prediction?3: (pos.x>0?4:2.5);
-        const dir   = ACTIVE===CONFIG.coordination? (pos.x>0?1:-1):1;
-        el.tick = (t,dt)=>{
-            const elapsed = (t-start)/1000;
-            const angle = dir * elapsed * ACTIVE.speed;
-            const x = radius * Math.cos(angle);
-            const z = radius * Math.sin(angle) - 4;
-            el.setAttribute('position',{x, y:pos.y, z});
-
-            // trail update
-            if(trail){
-                const pts = trail.object3D.getWorldPosition(new THREE.Vector3());
-                const arr = trail.getAttribute('line').start.split(' ').map(parseFloat);
-                if(arr.length===3) trail.setAttribute('line',{start:arr.join(' '), end:`${x} ${pos.y} ${z}`});
-                else trail.setAttribute('line',{start:`${x} ${pos.y} ${z}`, end:`${x} ${pos.y} ${z}`});
-            }
+        const start=performance.now();
+        const radius=ACTIVE===CONFIG.prediction?3:(finalPos.x>0?4:2.5);
+        const dir=ACTIVE===CONFIG.coordination?(finalPos.x>0?1:-1):1;
+        el.tick=(t,dt)=>{
+            const elapsed=(t-start)/1000;
+            const angle=dir*elapsed*ACTIVE.speed;
+            const x=radius*Math.cos(angle);
+            const z=radius*Math.sin(angle)-4;
+            el.setAttribute('position',{x,y:finalPos.y,z});
+            if(trail)trail.setAttribute('line',{start:`${x} ${finalPos.y} ${z}`,end:`${x} ${finalPos.y} ${z}`});
         };
     }
+
+    // animate from centre → finalPos
+    el.setAttribute('animation__move',{property:'position',to:`${finalPos.x} ${finalPos.y} ${finalPos.z}`,
+                                      dur:800,easing:'easeOutQuad'});
 
     hotspots.appendChild(el);
     return el;
 }
 
-/* --------------------------------------------------------------
-   SPAWN ONE TARGET (deterministic for prediction / coordination)
-   -------------------------------------------------------------- */
+/* ---------- SPAWN ONE (deterministic) ---------- */
 function spawnOne(){
     if(!isRunning) return;
-    let pos;
+    let finalPos;
     if(ACTIVE===CONFIG.prediction){
-        // clockwise circle, radius 3, start at 0°
-        const i = DATA.hits % 8;
-        const a = i * Math.PI/4;
-        pos = {x:3*Math.cos(a), y:0.2+Math.random()*0.4, z:3*Math.sin(a)-4};
+        const i=DATA.hits%8;
+        const a=i*Math.PI/4;
+        finalPos={x:3*Math.cos(a),y:0.2+Math.random()*0.4,z:3*Math.sin(a)-4};
     }else if(ACTIVE===CONFIG.coordination){
-        // two groups
-        const group = (DATA.hits%2===0)?'red':'blue';
-        const radius = group==='red'?4:2.5;
-        const i = Math.floor(DATA.hits/2) % 8;
-        const a = i * Math.PI/4;
-        pos = {x:radius*Math.cos(a), y:0.2+Math.random()*0.4, z:radius*Math.sin(a)-4};
+        const group=DATA.hits%2===0?'red':'blue';
+        const radius=group==='red'?4:2.5;
+        const i=Math.floor(DATA.hits/2)%8;
+        const a=i*Math.PI/4;
+        finalPos={x:radius*Math.cos(a),y:0.2+Math.random()*0.4,z:radius*Math.sin(a)-4};
     }else{
-        // pursuit – random
-        pos = {
-            x:(Math.random()*3)-1.5,
-            y:(Math.random()*2)-0.5,
-            z:-(Math.random()*(ACTIVE.maxDist-ACTIVE.minDist)+ACTIVE.minDist)
-        };
+        finalPos={x:(Math.random()*3)-1.5,y:(Math.random()*2)-0.5,
+                  z:-(Math.random()*(ACTIVE.maxDist-ACTIVE.minDist)+ACTIVE.minDist)};
     }
-    const color = ACTIVE===CONFIG.coordination?
-        (DATA.hits%2===0?'#ff5555':'#5555ff'):'#667eea';
-    createSphere(pos, color);
+    const color=ACTIVE===CONFIG.coordination?(DATA.hits%2===0?'#ff5555':'#5555ff'):'#667eea';
+    createSphere(finalPos,color);
 }
 
-/* --------------------------------------------------------------
-   CURSOR TRACKING (for prediction metrics)
-   -------------------------------------------------------------- */
-let lastCam = null;
+/* ---------- CURSOR TRACKING ---------- */
+let lastCam=null;
 setInterval(()=>{
     if(!isRunning) return;
-    const cam = document.querySelector('a-camera');
+    const cam=document.querySelector('a-camera');
     if(!cam) return;
-    const rot = cam.getAttribute('rotation');
-    const cur = {x:rot.y, y:rot.x, t:Date.now()};
+    const rot=cam.getAttribute('rotation');
+    const cur={x:rot.y,y:rot.x,t:Date.now()};
     if(lastCam){
-        const dt = (cur.t-lastCam.t)/1000;
-        if(dt>0){
-            DATA.cursorVel = {
-                x:(cur.x-lastCam.x)/dt,
-                y:(cur.y-lastCam.y)/dt
-            };
-        }
+        const dt=(cur.t-lastCam.t)/1000;
+        if(dt>0) DATA.cursorVel={x:(cur.x-lastCam.x)/dt,y:(cur.y-lastCam.y)/dt};
     }
-    lastCam = cur;
+    lastCam=cur;
 
-    // simple tracking quality (nearest target)
-    const targets = document.querySelectorAll('.hotspot');
-    let min=Infinity, near=null;
+    const targets=document.querySelectorAll('.hotspot');
+    let min=Infinity;
     targets.forEach(t=>{
-        const p = t.getAttribute('position');
-        const dx = Math.atan2(p.x,-p.z)*(180/Math.PI) - rot.y;
-        const dy = Math.atan2(p.y,-p.z)*(180/Math.PI) - rot.x;
-        const d = Math.hypot(dx,dy);
-        if(d<min){min=d; near=t;}
+        const p=t.getAttribute('position');
+        const dx=Math.atan2(p.x,-p.z)*(180/Math.PI)-rot.y;
+        const dy=Math.atan2(p.y,-p.z)*(180/Math.PI)-rot.x;
+        const d=Math.hypot(dx,dy);
+        if(d<min) min=d;
     });
-    DATA.tracking = Math.max(0,100-min*8);
-    const pred = {x:cur.x+DATA.cursorVel.x*0.5, y:cur.y+DATA.cursorVel.y*0.5};
-    // anticipation
-    if(near){
-        const p = near.getAttribute('position');
-        const tx = Math.atan2(p.x,-p.z)*(180/Math.PI);
-        const ty = Math.atan2(p.y,-p.z)*(180/Math.PI);
-        const pd = Math.hypot(tx-pred.x, ty-pred.y);
-        DATA.anticip = Math.max(0,100-pd*6);
-    }
-    DATA.predEff = DATA.tracking*0.4 + DATA.anticip*0.6;
-    predEl.textContent = Math.round(DATA.predEff)+'%';
+    DATA.tracking=Math.max(0,100-min*8);
+    const pred={x:cur.x+DATA.cursorVel.x*0.5,y:cur.y+DATA.cursorVel.y*0.5};
+    // anticipation (simplified)
+    DATA.anticip=Math.max(0,100-min*6);
+    DATA.predEff=DATA.tracking*0.4+DATA.anticip*0.6;
+    predEl.textContent=Math.round(DATA.predEff)+'%';
 },50);
 
-/* --------------------------------------------------------------
-   SESSION CONTROL
-   -------------------------------------------------------------- */
+/* ---------- NOD TO CONTINUE ---------- */
+let nodState='waitDown';
+function startNodPrompt(){
+    nodPrompt.style.display='block';
+    nodState='waitDown';
+}
+function endNodPrompt(){
+    nodPrompt.style.display='none';
+    // now spawn the first batch
+    for(let i=0;i<ACTIVE.num;i++) setTimeout(spawnOne,i*400);
+}
+AFRAME.registerComponent('nod-listener',{
+    tick:function(){
+        if(!isRunning) return;
+        const cam=this.el;
+        const pitch=cam.getAttribute('rotation').x;
+        if(nodState==='waitDown' && pitch>20) nodState='down';
+        else if(nodState==='down' && pitch<-10){ endNodPrompt(); this.el.removeAttribute('nod-listener'); }
+    }
+});
+
+/* ---------- SESSION ---------- */
 function startSession(){
     // reset
-    DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:Date.now(),
-            cursorPos:null,cursorVel:{x:0,y:0},tracking:0,anticip:0};
-    isRunning = true;
+    DATA={trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:Date.now(),
+          cursorVel:{x:0,y:0},tracking:0,anticip:0};
+    isRunning=true;
     hotspots.innerHTML=''; trailCon.innerHTML=''; trails=[];
     prog.style.width='0%';
     scoreEl.textContent='0'; focusEl.textContent='0%'; predEl.textContent='0%';
     hitEl.textContent='0';
-    setInterval(()=> {
-        const s = Math.floor((Date.now()-DATA.startTime)/1000);
-        timeEl.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-    },500);
-    for(let i=0;i<ACTIVE.num;i++) setTimeout(spawnOne, i*400);
-}
-startBtn.onclick = ()=>{ initAudio(); startSession(); };
+    setInterval(()=>{const s=Math.floor((Date.now()-DATA.startTime)/1000);
+        timeEl.textContent=`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;},500);
 
-/* --------------------------------------------------------------
-   MODE SWITCH (updates instructions & config)
-   -------------------------------------------------------------- */
-modeSel.onchange = ()=>{
-    const m = modeSel.value;
-    ACTIVE = CONFIG[m];
-    let txt = `<h3>${m.charAt(0).toUpperCase()+m.slice(1)} Mode</h3><p>`;
-    if(m==='prediction') txt += CONFIG.prediction.rule;
-    else if(m==='coordination') txt += CONFIG.coordination.rule;
-    else txt += 'Track the moving spheres smoothly.';
-    txt += '</p>';
-    instr.innerHTML = txt;
+    // show nod prompt (works in VR & mobile)
+    startNodPrompt();
+    document.querySelector('a-camera').setAttribute('nod-listener','');
+}
+startBtn.onclick=()=>{initAudio();startSession();};
+
+/* ---------- MODE SWITCH ---------- */
+modeSel.onchange=()=>{
+    const m=modeSel.value; ACTIVE=CONFIG[m];
+    let txt=`<h3>${m.charAt(0).toUpperCase()+m.slice(1)} Mode</h3><p>`;
+    if(m==='prediction') txt+=CONFIG.prediction.rule;
+    else if(m==='coordination') txt+=CONFIG.coordination.rule;
+    else txt+='Track the moving spheres smoothly.';
+    txt+='</p>'; instr.innerHTML=txt;
 };
 modeSel.dispatchEvent(new Event('change'));
 
-/* --------------------------------------------------------------
-   VR STEREO TOGGLE
-   -------------------------------------------------------------- */
-vrBtn.onclick = async ()=>{
-    isVR = !isVR;
-    if(isVR){
-        await scene.enterVR();
-        document.body.classList.add('vr-mode');
-        vrBtn.textContent='Exit VR Stereo Mode';
-        if(screen.orientation?.lock) screen.orientation.lock('landscape').catch(()=>{});
-    }else{
-        await scene.exitVR();
-        document.body.classList.remove('vr-mode');
-        vrBtn.textContent='Enable VR Stereo Mode';
-    }
+/* ---------- VR TOGGLE ---------- */
+vrBtn.onclick=async()=>{isVR=!isVR;
+    if(isVR){await scene.enterVR();document.body.classList.add('vr-mode');vrBtn.textContent='Exit VR Stereo Mode';
+        if(screen.orientation?.lock)screen.orientation.lock('landscape').catch(()=>{});
+    }else{await scene.exitVR();document.body.classList.remove('vr-mode');vrBtn.textContent='Enable VR Stereo Mode';}
 };
 scene.addEventListener('enter-vr',()=>{isVR=true;document.body.classList.add('vr-mode');});
 scene.addEventListener('exit-vr',()=>{isVR=false;document.body.classList.remove('vr-mode');});
 
-/* --------------------------------------------------------------
-   ORIENTATION & OUT-OF-BOUNDS
-   -------------------------------------------------------------- */
+/* ---------- ORIENTATION / BOUNDS ---------- */
 window.addEventListener('resize',checkOri);
 window.addEventListener('orientationchange',checkOri);
 function checkOri(){
-    if(innerHeight>innerWidth){
-        $('#orientation-message').style.display='flex';
-        scene.pause();
-    }else{
-        $('#orientation-message').style.display='none';
-        scene.play();
-    }
+    if(innerHeight>innerWidth){$('#orientation-message').style.display='flex';scene.pause();}
+    else{$('#orientation-message').style.display='none';scene.play();}
 }
 setInterval(()=>{
-    const cam = document.querySelector('a-camera');
+    const cam=document.querySelector('a-camera');
     if(!cam) return;
-    const r = cam.getAttribute('rotation');
-    if(Math.abs(r.y)>45 || Math.abs(r.x)>30){
+    const r=cam.getAttribute('rotation');
+    if(Math.abs(r.y)>45||Math.abs(r.x)>30){
         $('.out-of-bounds-message').style.display='block';
-        if(navigator.vibrate) navigator.vibrate(100);
-        DATA.fast *= 0.94;
-    }else{
-        $('.out-of-bounds-message').style.display='none';
-    }
+        if(navigator.vibrate)navigator.vibrate(100);
+        DATA.fast*=0.94;
+    }else $('.out-of-bounds-message').style.display='none';
 },120);
 checkOri();
 </script>
