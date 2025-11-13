@@ -814,3 +814,181 @@
         // Update UI with learning metrics
         function updateLearningUI() {
             focusQualityEl.textContent = `${Math.round(LEARNING_DATA.focusQuality)}%`;
+            
+            const learningRate = LEARNING_DATA.trials > 1 ? 
+                Math.round(LEARNING_DATA.predictionEfficiency) : 0;
+            learningRateEl.textContent = `${learningRate}%`;
+        }
+        
+        // Show milestone message
+        function showMilestoneMessage() {
+            let message;
+            
+            if (LEARNING_DATA.targetsHit === 10) {
+                message = "Initial learning phase complete! Your cerebellum is adapting.";
+            } else if (LEARNING_DATA.targetsHit === 25) {
+                message = "Fast learning engaged! Your cerebellar cortex is showing activity.";
+            } else if (LEARNING_DATA.targetsHit === 50) {
+                message = "Consolidation beginning! Memory transferring to cerebellar nuclei.";
+            } else if (LEARNING_DATA.targetsHit === 100) {
+                message = "Excellent progress! Long-term motor learning pathways forming.";
+            } else {
+                message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`;
+            }
+            
+            pointMessage.textContent = message;
+            pointMessage.style.display = 'block';
+            pointMessage.classList.remove('fade');
+            
+            setTimeout(() => {
+                pointMessage.classList.add('fade');
+                setTimeout(() => {
+                    pointMessage.style.display = 'none';
+                }, 500);
+            }, 5000);
+        }
+        
+        // Update session time display
+        function updateSessionTime() {
+            const elapsedSec = Math.floor((Date.now() - LEARNING_DATA.sessionStartTime) / 1000);
+            const minutes = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+            const seconds = (elapsedSec % 60).toString().padStart(2, '0');
+            sessionTimeEl.textContent = `${minutes}:${seconds}`;
+        }
+        
+        // Update score display
+        function updateScoreUI() {
+            scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
+        }
+        
+        // Check device orientation
+        function checkOrientation() {
+            if (window.innerHeight > window.innerWidth) {
+                orientationMessage.style.display = 'flex';
+                scene.pause();
+            } else {
+                orientationMessage.style.display = 'none';
+                scene.play();
+            }
+        }
+        
+        // Check if gaze is within bounds
+        function checkOutOfBounds() {
+            const camera = document.querySelector('a-camera');
+            const cameraRotation = camera.getAttribute('rotation');
+            
+            const yaw = cameraRotation.y;
+            const pitch = cameraRotation.x;
+            
+            const yawLimit = 45;
+            const pitchLimit = 30;
+            
+            if (Math.abs(yaw) > yawLimit || Math.abs(pitch) > pitchLimit) {
+                outOfBoundsMessage.style.display = 'block';
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+                
+                if (LEARNING_DATA.fastComponent > 0) {
+                    LEARNING_DATA.fastComponent *= 0.95;
+                    updateLearningUI();
+                }
+            } else {
+                outOfBoundsMessage.style.display = 'none';
+            }
+        }
+        
+        // Change training mode
+        function changeTrainingMode() {
+            const mode = trainingModeEl.value;
+            ACTIVE_CONFIG = CONFIG[mode];
+            
+            const instructionsEl = document.querySelector('.instructions');
+            
+            switch(mode) {
+                case 'pursuit':
+                    instructionsEl.innerHTML = `
+                        <h3>Pursuit Learning Exercise</h3>
+                        <p>Focus on dots and track them carefully to train smooth pursuit pathways.</p>
+                    `;
+                    break;
+                case 'prediction':
+                    instructionsEl.innerHTML = `
+                        <h3>Prediction Training Exercise</h3>
+                        <p>Anticipate target movements before they occur to enhance predictive motor learning.</p>
+                    `;
+                    break;
+                case 'coordination':
+                    instructionsEl.innerHTML = `
+                        <h3>Coordination Exercise</h3>
+                        <p>Track multiple moving targets to improve complex cerebellar coordination pathways.</p>
+                    `;
+                    break;
+            }
+        }
+        
+        // Toggle VR Stereo Mode
+        function toggleVRStereoMode() {
+            isVRMode = !isVRMode;
+            
+            if (isVRMode) {
+                scene.enterVR();
+                document.body.classList.add('vr-mode');
+                vrStereoToggle.textContent = '🥽 Exit VR Stereo Mode';
+                
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                }
+                
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(err => {
+                        console.log('Orientation lock failed:', err);
+                    });
+                }
+            } else {
+                scene.exitVR();
+                document.body.classList.remove('vr-mode');
+                vrStereoToggle.textContent = '🥽 Enable VR Stereo Mode';
+                
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+        
+        // Event listeners
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+        trainingModeEl.addEventListener('change', changeTrainingMode);
+        startTrainingBtn.addEventListener('click', () => {
+            // Start immediately with pursuit mode
+            ACTIVE_CONFIG = CONFIG.pursuit;
+            trainingModeEl.value = 'pursuit';
+            changeTrainingMode();
+            initSession();
+            initAudio();
+        });
+        
+        vrStereoToggle.addEventListener('click', () => {
+            toggleVRStereoMode();
+        });
+        
+        scene.addEventListener('enter-vr', () => {
+            isVRMode = true;
+            document.body.classList.add('vr-mode');
+        });
+        
+        scene.addEventListener('exit-vr', () => {
+            isVRMode = false;
+            document.body.classList.remove('vr-mode');
+        });
+        
+        setInterval(checkOutOfBounds, 100);
+        
+        scene.addEventListener('loaded', () => {
+            checkOrientation();
+            changeTrainingMode();
+        });
+    </script>
+</body>
+</html>
