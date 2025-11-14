@@ -605,7 +605,7 @@
         }
         
       
-        // Create visual cues for the predictive pattern
+      // Create visual cues for the predictive pattern
 function visualizePredictivePattern() {
     predictivePattern.forEach((pos, index) => {
         const indicator = document.createElement('a-entity');
@@ -616,14 +616,14 @@ function visualizePredictivePattern() {
             radiusOuter: 0.08
         });
         
-        // *** ВИПРАВЛЕННЯ: 'depthWrite: false' ПРИБРАНО ***
-        // Це змусить прозорі кільця "поважати" глибину сфер
+        // *** РЕШЕНИЕ: Принудительно включаем depthTest и выключаем depthWrite ***
         indicator.setAttribute('material', {
             color: '#667eea',
             opacity: 0.3,
             transparent: true,
-            shader: 'flat'
-            // depthWrite: false  <-- ПРИБРАНО
+            shader: 'flat',
+            depthTest: true,  // <-- ЯВНО УКАЗЫВАЕМ ПРОВЕРЯТЬ ГЛУБИНУ
+            depthWrite: false // <-- ЯВНО УКАЗЫВАЕМ НЕ ПИСАТЬ В ГЛУБИНУ
         });
         
         indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
@@ -639,14 +639,14 @@ function visualizePredictivePattern() {
                 opacity: 0.2
             });
 
-            // *** ВИПРАВЛЕННЯ: 'depthWrite: false' ПРИБРАНО ТУТ ТАКОЖ ***
-            // Це змусить прозорі лінії "поважати" глибину сфер
+            // *** РЕШЕНИЕ: Принудительно включаем depthTest и выключаем depthWrite ***
             line.setAttribute('material', {
                 shader: 'flat',
                 color: '#764ba2',
                 opacity: 0.2,
-                transparent: true
-                // depthWrite: false  <-- ПРИБРАНО
+                transparent: true,
+                depthTest: true,  // <-- ЯВНО УКАЗЫВАЕМ ПРОВЕРЯТЬ ГЛУБИНУ
+                depthWrite: false // <-- ЯВНО УКАЗЫВАЕМ НЕ ПИСАТЬ В ГЛУБИНУ
             });
             
             pathIndicators.appendChild(line);
