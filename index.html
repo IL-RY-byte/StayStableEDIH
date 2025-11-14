@@ -1,17 +1,321 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"> 
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мозжечковая тренировка VR</title>
-    <link rel="stylesheet" href="style.css">
+    <title>VR Тренировка Мозжечка</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .btn {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 25px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+
+        .btn.secondary {
+            background: #0f3460;
+        }
+
+        .btn.secondary:hover {
+            background: #1d4a7c;
+        }
+
+        .btn.vr {
+            background: #533483;
+        }
+
+        .btn.vr:hover {
+            background: #6a4ca3;
+        }
+
+        /* Игровой экран */
+        #gameScreen {
+            background: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vr-mode {
+            transform: rotate(90deg);
+            transform-origin: center;
+            width: 100vh;
+            height: 100vw;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(90deg);
+        }
+
+        #gameInfo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            z-index: 1000;
+            border: 1px solid #e94560;
+        }
+
+        #targetReticle {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border: 3px solid #00ff00;
+            border-radius: 50%;
+            z-index: 900;
+            pointer-events: none;
+            box-shadow: 0 0 20px #00ff00;
+        }
+
+        #targetReticle::before, #targetReticle::after {
+            content: '';
+            position: absolute;
+            background: #00ff00;
+        }
+
+        #targetReticle::before {
+            width: 3px;
+            height: 20px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #targetReticle::after {
+            width: 20px;
+            height: 3px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .ball {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #e94560, #8a2b42);
+            box-shadow: 0 0 25px rgba(233, 69, 96, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            user-select: none;
+            z-index: 100;
+        }
+
+        .ball.capturing {
+            animation: pulse 0.5s infinite alternate;
+            box-shadow: 0 0 30px #00ff00, 0 0 60px #00ff00;
+        }
+
+        .ball.capture-complete {
+            animation: captureComplete 0.5s forwards;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.1); }
+        }
+
+        @keyframes captureComplete {
+            0% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .capture-progress {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 4px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .capture-progress-bar {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* Экран результатов */
+        .results {
+            background: rgba(255,255,255,0.1);
+            padding: 30px;
+            border-radius: 20px;
+            margin: 30px 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(233, 69, 96, 0.3);
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            font-size: 1.3em;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+
+        /* Статистика */
+        .stats-preview {
+            margin-top: 30px;
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 400px;
+            border: 1px solid rgba(233, 69, 96, 0.3);
+        }
+
+        #statsList {
+            max-height: 60vh;
+            overflow-y: auto;
+            margin: 20px 0;
+            width: 90%;
+            max-width: 500px;
+        }
+
+        .stat-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 10px;
+            text-align: left;
+            border: 1px solid rgba(233, 69, 96, 0.2);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .mode-selector {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .mode-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid #0f3460;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn.active {
+            background: #0f3460;
+            border-color: #e94560;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .btn {
+                padding: 12px 25px;
+                font-size: 1.1em;
+            }
+            
+            #gameInfo {
+                font-size: 1em;
+                padding: 10px;
+            }
+        }
+
+        @media (orientation: landscape) and (max-height: 500px) {
+            .screen {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="app">
         <!-- Экран запуска -->
         <div id="startScreen" class="screen active">
-            <h1>Тренировка Мозжечка</h1>
-            <p>Наводите телефон на шары и удерживайте в центре 2 секунды</p>
+            <h1>VR Тренировка Мозжечка</h1>
+            <p>Наводите прицел на шары и удерживайте в центре для захвата</p>
+            
+            <div class="mode-selector">
+                <div class="mode-btn active" data-mode="normal">Обычный режим</div>
+                <div class="mode-btn" data-mode="vr">VR режим</div>
+            </div>
+            
             <button id="startBtn" class="btn">Начать тренировку</button>
             <div class="stats-preview">
                 <h3>Последние результаты:</h3>
@@ -25,8 +329,9 @@
                 <div>Шары: <span id="ballCount">0</span></div>
                 <div>Время: <span id="timer">0</span>с</div>
                 <div>Попадания: <span id="hits">0</span></div>
+                <div>Точность: <span id="accuracy">0%</span></div>
             </div>
-            <div id="targetReticle">+</div>
+            <div id="targetReticle"></div>
             <div id="ballsContainer"></div>
         </div>
 
@@ -64,6 +369,420 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        class VRBrainTraining {
+            constructor() {
+                this.balls = [];
+                this.score = 0;
+                this.misses = 0;
+                this.gameTime = 0;
+                this.gameTimer = null;
+                this.isPlaying = false;
+                this.ballSize = 80;
+                this.captureTime = 2000; // 2 секунды для захвата
+                this.currentMode = 'normal';
+                this.deviceOrientation = { alpha: 0, beta: 0, gamma: 0 };
+                
+                this.initializeElements();
+                this.setupEventListeners();
+                this.loadStats();
+                this.setupDeviceOrientation();
+            }
+
+            initializeElements() {
+                this.screens = {
+                    start: document.getElementById('startScreen'),
+                    game: document.getElementById('gameScreen'),
+                    results: document.getElementById('resultsScreen'),
+                    stats: document.getElementById('statsScreen')
+                };
+
+                this.elements = {
+                    ballCount: document.getElementById('ballCount'),
+                    timer: document.getElementById('timer'),
+                    hits: document.getElementById('hits'),
+                    accuracy: document.getElementById('accuracy'),
+                    finalTime: document.getElementById('finalTime'),
+                    finalHits: document.getElementById('finalHits'),
+                    finalAccuracy: document.getElementById('finalAccuracy'),
+                    ballsPerMinute: document.getElementById('ballsPerMinute'),
+                    recentStats: document.getElementById('recentStats'),
+                    statsList: document.getElementById('statsList'),
+                    ballsContainer: document.getElementById('ballsContainer'),
+                    targetReticle: document.getElementById('targetReticle')
+                };
+
+                this.buttons = {
+                    start: document.getElementById('startBtn'),
+                    restart: document.getElementById('restartBtn'),
+                    stats: document.getElementById('statsBtn'),
+                    back: document.getElementById('backBtn'),
+                    clearStats: document.getElementById('clearStatsBtn')
+                };
+            }
+
+            setupEventListeners() {
+                this.buttons.start.addEventListener('click', () => this.startGame());
+                this.buttons.restart.addEventListener('click', () => this.startGame());
+                this.buttons.stats.addEventListener('click', () => this.showStats());
+                this.buttons.back.addEventListener('click', () => this.showScreen('start'));
+                this.buttons.clearStats.addEventListener('click', () => this.clearStats());
+
+                // Режимы отображения
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentMode = e.target.dataset.mode;
+                    });
+                });
+
+                // Ручное управление для тестирования на ПК
+                document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                document.addEventListener('touchmove', (e) => this.handleTouchMove(e));
+            }
+
+            setupDeviceOrientation() {
+                if (typeof DeviceOrientationEvent !== 'undefined') {
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        // iOS 13+
+                        document.addEventListener('click', async () => {
+                            try {
+                                const permission = await DeviceOrientationEvent.requestPermission();
+                                if (permission === 'granted') {
+                                    window.addEventListener('deviceorientation', (e) => this.handleDeviceOrientation(e));
+                                }
+                            } catch (error) {
+                                console.log('Ошибка доступа к гироскопу:', error);
+                            }
+                        }, { once: true });
+                    } else {
+                        // Android и другие браузеры
+                        window.addEventListener('deviceorientation', (e) => this.handleDeviceOrientation(e));
+                    }
+                }
+            }
+
+            handleDeviceOrientation(e) {
+                this.deviceOrientation = {
+                    alpha: e.alpha || 0,
+                    beta: e.beta || 0,
+                    gamma: e.gamma || 0
+                };
+
+                if (this.isPlaying) {
+                    this.updateReticlePosition();
+                }
+            }
+
+            handleMouseMove(e) {
+                if (!this.isPlaying) return;
+                
+                this.updateReticlePosition(e.clientX, e.clientY);
+            }
+
+            handleTouchMove(e) {
+                if (!this.isPlaying) return;
+                e.preventDefault();
+                
+                const touch = e.touches[0];
+                this.updateReticlePosition(touch.clientX, touch.clientY);
+            }
+
+            updateReticlePosition(x, y) {
+                if (this.currentMode === 'vr') {
+                    // В VR режиме используем гироскоп для управления
+                    const gamma = this.deviceOrientation.gamma || 0;
+                    const beta = this.deviceOrientation.beta || 0;
+                    
+                    const moveX = (gamma / 90) * window.innerWidth;
+                    const moveY = (beta / 90) * window.innerHeight;
+                    
+                    this.elements.targetReticle.style.left = `${50 + moveX}%`;
+                    this.elements.targetReticle.style.top = `${50 + moveY}%`;
+                } else {
+                    // В обычном режиме используем мышь/тач
+                    if (x !== undefined && y !== undefined) {
+                        this.elements.targetReticle.style.left = `${x}px`;
+                        this.elements.targetReticle.style.top = `${y}px`;
+                    }
+                }
+                
+                this.checkBallCapture();
+            }
+
+            startGame() {
+                this.resetGame();
+                this.showScreen('game');
+                this.isPlaying = true;
+                
+                // Применяем VR режим если выбран
+                if (this.currentMode === 'vr') {
+                    document.body.classList.add('vr-mode');
+                    screen.orientation.lock('landscape').catch(() => {});
+                } else {
+                    document.body.classList.remove('vr-mode');
+                }
+                
+                // Запуск таймера
+                this.gameTimer = setInterval(() => {
+                    this.gameTime++;
+                    this.elements.timer.textContent = this.gameTime;
+                    this.updateAccuracy();
+                    
+                    // Автоматическое окончание через 2 минуты
+                    if (this.gameTime >= 120) {
+                        this.endGame();
+                    }
+                }, 1000);
+
+                // Генерация шаров
+                this.generateBall();
+                this.ballGenerator = setInterval(() => this.generateBall(), 1500);
+            }
+
+            resetGame() {
+                this.balls = [];
+                this.score = 0;
+                this.misses = 0;
+                this.gameTime = 0;
+                this.elements.ballsContainer.innerHTML = '';
+                this.elements.ballCount.textContent = '0';
+                this.elements.hits.textContent = '0';
+                this.elements.accuracy.textContent = '0%';
+                this.elements.timer.textContent = '0';
+                
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                }
+                if (this.ballGenerator) {
+                    clearInterval(this.ballGenerator);
+                }
+            }
+
+            generateBall() {
+                if (!this.isPlaying || this.balls.length >= 10) return;
+
+                const ball = document.createElement('div');
+                ball.className = 'ball';
+                
+                const size = this.ballSize + Math.random() * 40;
+                ball.style.width = `${size}px`;
+                ball.style.height = `${size}px`;
+                
+                // Позиция с отступом от краев
+                const margin = 50;
+                const x = margin + Math.random() * (window.innerWidth - size - margin * 2);
+                const y = margin + Math.random() * (window.innerHeight - size - margin * 2);
+                ball.style.left = `${x}px`;
+                ball.style.top = `${y}px`;
+                
+                // Прогресс бар для захвата
+                const progressBar = document.createElement('div');
+                progressBar.className = 'capture-progress';
+                const progressBarInner = document.createElement('div');
+                progressBarInner.className = 'capture-progress-bar';
+                progressBar.appendChild(progressBarInner);
+                ball.appendChild(progressBar);
+                
+                this.elements.ballsContainer.appendChild(ball);
+                
+                const ballObj = {
+                    element: ball,
+                    progressBar: progressBarInner,
+                    x: x + size/2,
+                    y: y + size/2,
+                    size: size,
+                    isCapturing: false,
+                    captureProgress: 0,
+                    captureTimer: null
+                };
+                
+                this.balls.push(ballObj);
+                this.elements.ballCount.textContent = this.balls.length;
+            }
+
+            checkBallCapture() {
+                const reticle = this.elements.targetReticle.getBoundingClientRect();
+                const reticleCenter = {
+                    x: reticle.left + reticle.width / 2,
+                    y: reticle.top + reticle.height / 2
+                };
+
+                this.balls.forEach(ball => {
+                    const distance = Math.sqrt(
+                        Math.pow(ball.x - reticleCenter.x, 2) + Math.pow(ball.y - reticleCenter.y, 2)
+                    );
+
+                    if (distance < (reticle.width / 2) + (ball.size / 2)) {
+                        if (!ball.isCapturing) {
+                            this.startCapture(ball);
+                        }
+                        this.updateCaptureProgress(ball);
+                    } else {
+                        if (ball.isCapturing) {
+                            this.stopCapture(ball);
+                        }
+                    }
+                });
+            }
+
+            startCapture(ball) {
+                ball.isCapturing = true;
+                ball.captureProgress = 0;
+                ball.element.classList.add('capturing');
+                ball.progressBar.style.width = '0%';
+            }
+
+            updateCaptureProgress(ball) {
+                if (!ball.isCapturing) return;
+                
+                ball.captureProgress += 10;
+                const progressPercent = (ball.captureProgress / this.captureTime) * 100;
+                ball.progressBar.style.width = `${progressPercent}%`;
+                
+                if (ball.captureProgress >= this.captureTime) {
+                    this.completeCapture(ball);
+                }
+            }
+
+            stopCapture(ball) {
+                ball.isCapturing = false;
+                ball.captureProgress = 0;
+                ball.element.classList.remove('capturing');
+                ball.progressBar.style.width = '0%';
+            }
+
+            completeCapture(ball) {
+                ball.isCapturing = false;
+                ball.element.classList.remove('capturing');
+                ball.element.classList.add('capture-complete');
+                
+                setTimeout(() => {
+                    const index = this.balls.indexOf(ball);
+                    if (index > -1) {
+                        this.balls.splice(index, 1);
+                        ball.element.remove();
+                        this.elements.ballCount.textContent = this.balls.length;
+                        
+                        this.score++;
+                        this.elements.hits.textContent = this.score;
+                        this.updateAccuracy();
+                    }
+                }, 500);
+            }
+
+            updateAccuracy() {
+                const totalAttempts = this.score + this.misses;
+                const accuracy = totalAttempts > 0 ? Math.round((this.score / totalAttempts) * 100) : 0;
+                this.elements.accuracy.textContent = `${accuracy}%`;
+                return accuracy;
+            }
+
+            endGame() {
+                this.isPlaying = false;
+                clearInterval(this.gameTimer);
+                clearInterval(this.ballGenerator);
+                
+                const accuracy = this.updateAccuracy();
+                const ballsPerMinute = this.gameTime > 0 ? Math.round((this.score / this.gameTime) * 60) : 0;
+                
+                this.elements.finalTime.textContent = `${this.gameTime} сек`;
+                this.elements.finalHits.textContent = this.score;
+                this.elements.finalAccuracy.textContent = `${accuracy}%`;
+                this.elements.ballsPerMinute.textContent = ballsPerMinute;
+                
+                this.saveStats(this.score, this.gameTime, accuracy, ballsPerMinute);
+                this.showScreen('results');
+                document.body.classList.remove('vr-mode');
+            }
+
+            saveStats(hits, time, accuracy, bpm) {
+                const stats = this.getStats();
+                const session = {
+                    date: new Date().toLocaleString(),
+                    hits,
+                    time,
+                    accuracy,
+                    ballsPerMinute: bpm,
+                    mode: this.currentMode
+                };
+                
+                stats.push(session);
+                localStorage.setItem('vrBrainTrainingStats', JSON.stringify(stats));
+                this.loadStats();
+            }
+
+            getStats() {
+                const stats = localStorage.getItem('vrBrainTrainingStats');
+                return stats ? JSON.parse(stats) : [];
+            }
+
+            loadStats() {
+                const stats = this.getStats();
+                this.displayRecentStats(stats);
+            }
+
+            displayRecentStats(stats) {
+                const recent = stats.slice(-3).reverse();
+                this.elements.recentStats.innerHTML = recent.map(session => `
+                    <div class="stat-item">
+                        <div class="stat-header">
+                            <span>${session.date}</span>
+                            <span>${session.hits} попаданий</span>
+                        </div>
+                        <div class="stat-details">
+                            <span>Режим: ${session.mode === 'vr' ? 'VR' : 'Обычный'}</span>
+                            <span>Точность: ${session.accuracy}%</span>
+                        </div>
+                    </div>
+                `).join('') || '<p>Нет данных о тренировках</p>';
+            }
+
+            showStats() {
+                const stats = this.getStats().reverse();
+                this.elements.statsList.innerHTML = stats.map(session => `
+                    <div class="stat-item">
+                        <div class="stat-header">
+                            <span>${session.date}</span>
+                            <span>${session.hits} попаданий</span>
+                        </div>
+                        <div class="stat-details">
+                            <span>Режим: ${session.mode === 'vr' ? 'VR' : 'Обычный'}</span>
+                            <span>Время: ${session.time}с</span>
+                            <span>Точность: ${session.accuracy}%</span>
+                            <span>Шаров/мин: ${session.ballsPerMinute}</span>
+                        </div>
+                    </div>
+                `).join('') || '<p>Нет данных о тренировках</p>';
+                
+                this.showScreen('stats');
+            }
+
+            clearStats() {
+                if (confirm('Очистить всю историю тренировок?')) {
+                    localStorage.removeItem('vrBrainTrainingStats');
+                    this.showStats();
+                }
+            }
+
+            showScreen(screenName) {
+                Object.values(this.screens).forEach(screen => screen.classList.remove('active'));
+                this.screens[screenName].classList.add('active');
+            }
+        }
+
+        // Запуск приложения при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            new VRBrainTraining();
+        });
+
+        // Предотвращение скролла на мобильных устройствах
+        document.addEventListener('touchmove', (e) => {
+            if (document.getElementById('gameScreen').classList.contains('active')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+    </script>
 </body>
 </html>
