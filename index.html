@@ -293,7 +293,7 @@
         🥽 Enable VR Stereo Mode
     </button>
 
-    <a-scene raycaster="objects: .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true">
+    <a-scene raycaster="objects: .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true; logarithmicDepthBuffer: true;">
         <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true">
             <a-entity
                 raycaster="objects: .hotspot; far: 20"
@@ -658,7 +658,7 @@
             }
             
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const radius = isMobile ? 0.3 : 0.2;
+            const radius = isMobile ? 0.35 : 0.25;
             
             hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
             hotspot.setAttribute('geometry', {
@@ -666,7 +666,7 @@
                 radius: radius
             });
             hotspot.setAttribute('material', {
-                shader: 'standart',
+                shader: 'standard',
                 color: '#667eea',
                 emissive: '#764ba2',
                 emissiveIntensity: 0.8
