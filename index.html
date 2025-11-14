@@ -656,166 +656,162 @@ function visualizePredictivePattern() {
     });
 }
 
-        // Create a new hotspot/target
-        function createHotspot() {
-            const hotspot = document.createElement('a-entity');
-            
-            let position;
-            if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
-                const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-                // Позиція індикатора (на Z = -4.6)
-                position = predictivePattern[patternIndex]; 
-                
-                // *** ВИПРАВЛЕННЯ 2 (частина Б): Повертаємо хотспот на Z = -4.5 ***
-                position = {x: position.x, y: position.y, z: position.z + 0.1};
+       // Create a new hotspot/target
+function createHotspot() {
+    const hotspot = document.createElement('a-entity');
+    
+    let position;
+    if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
+        const patternIndex = Math.floor(Math.random() * predictivePattern.length);
+        // Позиція індикатора (на Z = -4.6 або -5.0, залежно від вашої версії)
+        position = predictivePattern[patternIndex]; 
+        
+        // Повертаємо хотспот, щоб він був "ближче" (на 0.1 або 0.5)
+        position = {x: position.x, y: position.y, z: position.z + 0.1}; // (Використовуйте +0.1, якщо Z -4.6, або +0.5, якщо Z -5.0)
 
-            } else {
-                const x = (Math.random() * 3) - 1.5;
-                const y = (Math.random() * 2) - 0.5;
-                const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
-                position = { x, y, z };
-            }
-            
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const radius = isMobile ? 0.35 : 0.25;
-            
-           hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
-           hotspot.setAttribute('geometry', {
-                primitive: 'sphere',
-                radius: radius
-            });
-            hotspot.setAttribute('material', {
-                shader: 'standard',
-                color: '#667eea',
-                emissive: '#764ba2',
-                emissiveIntensity: 0.8
-            });
-            hotspot.setAttribute('class', 'hotspot');
+    } else {
+        const x = (Math.random() * 3) - 1.5;
+        const y = (Math.random() * 2) - 0.5;
+        const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
+        position = { x, y, z };
+    }
+    
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const radius = isMobile ? 0.35 : 0.25;
+    
+    hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+    hotspot.setAttribute('geometry', {
+        primitive: 'sphere',
+        radius: radius
+    });
+    hotspot.setAttribute('material', {
+        shader: 'standard',
+        color: '#667eea',
+        emissive: '#764ba2',
+        emissiveIntensity: 0.8
+    });
+    hotspot.setAttribute('class', 'hotspot');
 
-            // ---------------------
-            // RING (VR-SAFE variant)
-            // ---------------------
-            const ring = document.createElement('a-entity');
-            ring.setAttribute('geometry', {
-                primitive: 'ring',
-                radiusInner: radius * 1.33,
-                radiusOuter: radius * 1.67,
-                thetaLength: 0
-            });
-            ring.setAttribute('material', {
-                color: '#FFFFFF',
-                opacity: 0.8,
-                transparent: true,
-                side: 'double'
-            });
-            ring.setAttribute('visible', false);
-            hotspot.appendChild(ring);
+    // ---------------------
+    // RING (VR-SAFE variant)
+    // ---------------------
+    const ring = document.createElement('a-entity');
+    ring.setAttribute('geometry', {
+        primitive: 'ring',
+        radiusInner: radius * 1.33,
+        radiusOuter: radius * 1.67,
+        thetaLength: 0
+    });
+    ring.setAttribute('material', {
+        color: '#FFFFFF',
+        opacity: 0.8,
+        transparent: true,
+        side: 'double'
+    });
+    ring.setAttribute('visible', false);
+    hotspot.appendChild(ring);
 
-            // ---------------------
-            // DATA
-            // ---------------------
-            hotspot.dataset.focusStartTime = 0;
-            hotspot.dataset.focusQuality = 0;
-            hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1;
+    // ---------------------
+    // DATA
+    // ---------------------
+    hotspot.dataset.focusStartTime = 0;
+    hotspot.dataset.focusQuality = 0;
+    hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1;
 
-            // ---------------------
-            // EVENTS
-            // ---------------------
-            hotspot.addEventListener('mouseenter', function() {
-                hotspot.dataset.focusStartTime = Date.now();
-                ring.setAttribute('visible', true);
+    // ---------------------
+    // EVENTS
+    // ---------------------
+    hotspot.addEventListener('mouseenter', function() {
+        hotspot.dataset.focusStartTime = Date.now();
+        ring.setAttribute('visible', true);
 
-                ring.setAttribute('animation__fill', {
-                    property: 'geometry.thetaLength',
-                    from: 0,
-                    to: 360,
-                    dur: ACTIVE_CONFIG.fuseTimeout,
-                    easing: 'linear'
-                });
-            });
+        ring.setAttribute('animation__fill', {
+            property: 'geometry.thetaLength',
+            from: 0,
+            to: 360,
+            dur: ACTIVE_CONFIG.fuseTimeout,
+            easing: 'linear'
+        });
+    });
 
-            hotspot.addEventListener('mouseleave', function() {
-                ring.setAttribute('visible', false);
-                ring.removeAttribute('animation__fill');
-                ring.setAttribute('geometry', {
-                    primitive: 'ring',
-                    radiusInner: radius * 1.33,
-                    radiusOuter: radius * 1.67,
-                    thetaLength: 0
-                });
-                hotspot.dataset.focusQuality = 0;
-            });
+    hotspot.addEventListener('mouseleave', function() {
+        ring.setAttribute('visible', false);
+        ring.removeAttribute('animation__fill');
+        ring.setAttribute('geometry', {
+            primitive: 'ring',
+            radiusInner: radius * 1.33,
+            radiusOuter: radius * 1.67,
+            thetaLength: 0
+        });
+        hotspot.dataset.focusQuality = 0;
+    });
 
-            hotspot.addEventListener('click', function() {
-                const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
-                const focusQuality = Math.min(100, (focusDuration / ACTIVE_CONFIG.fuseTimeout) * 100);
-                
-                const enhancedQuality = (focusQuality * 0.4) + 
-                                       (LEARNING_DATA.trackingAccuracy * 0.3) + 
-                                       (LEARNING_DATA.anticipationScore * 0.3);
-                
-                LEARNING_DATA.focusQuality = enhancedQuality;
-                
-                if (isAudioInitialized) {
-                    window.focusSound(enhancedQuality);
-                    setTimeout(() => window.successSound(), 300);
-                }
-                
-                updateLearning(enhancedQuality);
-                
-                this.setAttribute('animation', {
-                    property: 'scale',
-                    dur: 500,
-                    to: '0 0 0',
-                    easing: 'easeInOutQuad'
-                });
-                
-                setTimeout(() => {
-                    const index = activeHotspots.indexOf(this);
-                    if (index > -1) activeHotspots.splice(index, 1);
-                    
-                    if (this.parentNode) {
-                        this.parentNode.removeChild(this);
-                    }
-                    setTimeout(createHotspot, ACTIVE_CONFIG.spawnDelay);
-                    
-                    LEARNING_DATA.targetsHit++;
-                    targetsHitEl.textContent = LEARNING_DATA.targetsHit;
-                    
-                    scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
-                    
-                    if (LEARNING_DATA.targetsHit % 10 === 0) {
-                        showMilestoneMessage();
-                    }
-                }, 300);
-            });
-            
-            if (ACTIVE_CONFIG.predictiveMode) {
-                hotspot.setAttribute('animation', {
-                    property: 'position',
-                    dur: 5000 + Math.random() * 5000,
-                    easing: 'linear',
-                    loop: true,
-                    to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}`
-                });
-            }
-            
-            hotspotsContainer.appendChild(hotspot);
-            activeHotspots.push(hotspot);
-            
-            hotspot.tick = (time, timeDelta) => {
-                if (!ACTIVE_CONFIG.predictiveMode) return;
-                
-                const currentPos = hotspot.getAttribute('position');
-                const speed = ACTIVE_CONFIG.moveSpeed;
-                const dir = parseInt(hotspot.dataset.direction);
-                
-                currentPos.x += Math.sin(time / 1000) * speed * dir;
-                currentPos.y += Math.cos(time / 2000) * speed * dir;
-                
-                hotspot.setAttribute('position', currentPos);
-            };
+    hotspot.addEventListener('click', function() {
+        const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
+        const focusQuality = Math.min(100, (focusDuration / ACTIVE_CONFIG.fuseTimeout) * 100);
+        
+        const enhancedQuality = (focusQuality * 0.4) + 
+                               (LEARNING_DATA.trackingAccuracy * 0.3) + 
+                               (LEARNING_DATA.anticipationScore * 0.3);
+        
+        LEARNING_DATA.focusQuality = enhancedQuality;
+        
+        if (isAudioInitialized) {
+            window.focusSound(enhancedQuality);
+            setTimeout(() => window.successSound(), 300);
         }
+        
+        updateLearning(enhancedQuality);
+        
+        this.setAttribute('animation', {
+            property: 'scale',
+            dur: 500,
+            to: '0 0 0',
+            easing: 'easeInOutQuad'
+        });
+        
+        setTimeout(() => {
+            const index = activeHotspots.indexOf(this);
+            if (index > -1) activeHotspots.splice(index, 1);
+            
+            if (this.parentNode) {
+                this.parentNode.removeChild(this);
+            }
+            setTimeout(createHotspot, ACTIVE_CONFIG.spawnDelay);
+            
+            LEARNING_DATA.targetsHit++;
+            targetsHitEl.textContent = LEARNING_DATA.targetsHit;
+            
+            scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
+            
+            if (LEARNING_DATA.targetsHit % 10 === 0) {
+                showMilestoneMessage();
+            }
+        }, 300);
+    });
+    
+    // *** КОНФЛІКТНИЙ БЛОК ВИДАЛЕНО ***
+    // if (ACTIVE_CONFIG.predictiveMode) {
+    //     hotspot.setAttribute('animation', { ... });
+    // }
+    
+    hotspotsContainer.appendChild(hotspot);
+    activeHotspots.push(hotspot);
+    
+    // *** ЦЯ ФУНКЦІЯ ТЕПЕР БУДЕ ПРАЦЮВАТИ КОРЕКТНО ***
+    hotspot.tick = (time, timeDelta) => {
+        if (!ACTIVE_CONFIG.predictiveMode) return;
+        
+        const currentPos = hotspot.getAttribute('position');
+        const speed = ACTIVE_CONFIG.moveSpeed;
+        const dir = parseInt(hotspot.dataset.direction);
+        
+        currentPos.x += Math.sin(time / 1000) * speed * dir;
+        currentPos.y += Math.cos(time / 2000) * speed * dir;
+        
+        hotspot.setAttribute('position', currentPos);
+    };
+}
         
         // Update learning model
         function updateLearning(focusQuality) {
