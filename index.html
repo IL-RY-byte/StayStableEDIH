@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StayStable VR – Fixed for Stereo</title>
+    <title>StayStable VR – Fixed Generation</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.min.js"></script>
     <style>
@@ -74,6 +74,42 @@
 </a-scene>
 
 <script>
+// Register mover component for tick in VR
+AFRAME.registerComponent('mover', {
+  schema: {
+    radius: {type: 'number', default: 3},
+    dir: {type: 'number', default: 1},
+    speed: {type: 'number', default: 0.025},
+    finalY: {type: 'number', default: 0}
+  },
+  init: function () {
+    this.start = performance.now();
+  },
+  tick: function (t) {
+    const elapsed = (t - this.start) / 1000;
+    const angle = this.data.dir * elapsed * this.data.speed;
+    const x = this.data.radius * Math.cos(angle);
+    const z = this.data.radius * Math.sin(angle) - 4;
+    this.el.setAttribute('position', {x, y: this.data.finalY, z});
+    const trail = this.el.components.trail;
+    if (trail) {
+      const cur = `${x} ${this.data.finalY} ${z}`;
+      trail.el.setAttribute('line', {start: trail.start || cur, end: cur});
+      trail.start = cur;
+    }
+  }
+});
+
+// Register trail component to hold state
+AFRAME.registerComponent('trail', {
+  schema: {
+    el: {type: 'selector'}
+  },
+  init: function () {
+    this.start = null;
+  }
+});
+
 /* ---------- CONFIG ---------- */
 const CONFIG = {
     pursuit:    {num:5, spawnDelay:2000, minDist:3, maxDist:6, predictive:false, fuse:1000, speed:0},
@@ -85,7 +121,7 @@ let ACTIVE = CONFIG.pursuit;
 let DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:0,cursorVel:{x:0,y:0},tracking:0,anticip:0};
 let isRunning = false, isVR = false, synth = null, trails = [];
 let nodPrompt = document.getElementById('nod-prompt');
-let spawnedInVR = false; // Флаг: были ли шары созданы в VR
+let spawnedInVR = false;
 
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
@@ -114,7 +150,7 @@ function hapticPulse() {
     if (pad?.hapticActuators?.[0]) pad.hapticActuators[0].pulse(0.8, 100);
 }
 
-/* ---------- CREATE SPHERE (VR-SAFE) ---------- */
+/* ---------- CREATE SPHERE ---------- */
 function createSphere(finalPos, color = '#667eea') {
     const el = document.createElement('a-entity');
     el.setAttribute('position', '0 1.6 0');
@@ -154,7 +190,7 @@ function createSphere(finalPos, color = '#667eea') {
         trail = document.createElement('a-entity');
         trail.setAttribute('line', 'color:#764ba2;opacity:0.4');
         trailCon.appendChild(trail);
-        trails.push({el: trail});
+        el.setAttribute('trail', {el: trail});
     }
 
     // Взаимодействие
@@ -192,25 +228,14 @@ function createSphere(finalPos, color = '#667eea') {
         setTimeout(() => spawnOne(), ACTIVE.spawnDelay);
     });
 
-    // Движение
+    // Движение (теперь как компонент)
     if (ACTIVE.predictive) {
-        const start = performance.now();
         const radius = ACTIVE === CONFIG.prediction ? 3 : (finalPos.x > 0 ? 4 : 2.5);
         const dir = ACTIVE === CONFIG.coordination ? (finalPos.x > 0 ? 1 : -1) : 1;
-        el.tick = (t) => {
-            const elapsed = (t - start) / 1000;
-            const angle = dir * elapsed * ACTIVE.speed;
-            const x = radius * Math.cos(angle);
-            const z = radius * Math.sin(angle) - 4;
-            el.setAttribute('position', {x, y: finalPos.y, z});
-            if (trail) {
-                const cur = `${x} ${finalPos.y} ${z}`;
-                trail.setAttribute('line', {start: cur, end: cur});
-            }
-        };
+        el.setAttribute('mover', {radius: radius, dir: dir, speed: ACTIVE.speed, finalY: finalPos.y});
     }
 
-    // Появление из центра
+    // Анимация из центра
     el.setAttribute('animation__move', {
         property: 'position',
         to: `${finalPos.x} ${finalPos.y} ${finalPos.z}`,
@@ -249,8 +274,7 @@ function spawnOne() {
 
 /* ---------- RESPAWN IN VR ---------- */
 function respawnAllInVR() {
-    if (!isVR || !isRunning || spawnedInVR) return;
-    console.log("Respawning spheres in VR...");
+    if (spawnedInVR) return;
     hotspots.innerHTML = '';
     trailCon.innerHTML = '';
     trails = [];
@@ -302,7 +326,7 @@ startBtn.onclick = () => { initAudio(); startSession(); };
 /* ---------- MODE & VR ---------- */
 modeSel.onchange = () => {
     const m = modeSel.value; ACTIVE = CONFIG[m];
-    $('.instructions').innerHTML = `<h3>${m.charAt(0).toUpperCase() + m.slice(1)}</h3><p>Track the glowing spheres.</p>`;
+    $('.instructions').innerHTML = `<h3>${m.charAt(0).toUpperCase() + m.slice(1)} Mode</h3><p>Track the glowing spheres.</p>`;
 };
 
 vrBtn.onclick = async () => {
@@ -312,7 +336,7 @@ vrBtn.onclick = async () => {
         document.body.classList.add('vr-mode');
         vrBtn.textContent = 'Exit VR';
         if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(() => {});
-        setTimeout(respawnAllInVR, 500); // Дублируем шары после входа
+        setTimeout(respawnAllInVR, 1000); // Увеличил таймаут
     } else {
         await scene.exitVR();
         document.body.classList.remove('vr-mode');
@@ -320,8 +344,8 @@ vrBtn.onclick = async () => {
     }
 };
 
-scene.addEventListener('enter-vr', () => { isVR = true; document.body.classList.add('vr-mode'); setTimeout(respawnAllInVR, 500); });
-scene.addEventListener('exit-vr', () => { isVR = false; document.body.classList.remove('vr-mode'); });
+scene.addEventListener('enter-vr', () => { isVR = true; document.body.classList.add('vr-mode'); setTimeout(respawnAllInVR, 1000); });
+scene.addEventListener('exit-vr', () => { isVR = false; document.body.classList.remove('vr-mode'); spawnedInVR = false; });
 
 /* ---------- ORIENTATION & BOUNDS ---------- */
 window.addEventListener('resize', checkOri);
