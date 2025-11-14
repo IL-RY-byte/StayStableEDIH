@@ -292,7 +292,8 @@
     </button>
 
     <a-scene raycaster="objects: .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
-        <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true">
+        
+        <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true" camera="near: 0.1; far: 20;">
             <a-entity
             raycaster="objects: .hotspot; far: 20"
             position="0 0 -1"
@@ -592,8 +593,8 @@
                 const x = radius * Math.sin(angle * 2) * 0.7;
                 const y = radius * Math.sin(angle) * 0.3;
                 
-                // Это небольшой отступ по Z, который теперь будет работать
-                const z = -radius * 1.5 - 0.05; 
+                // *** ВИПРАВЛЕННЯ 2: Збільшуємо відступ по Z для гарантії ***
+                const z = -radius * 1.5 - 0.1; // (буде -4.6)
                 
                 predictivePattern.push({ x, y, z });
             }
@@ -614,7 +615,7 @@
                     radiusOuter: 0.08
                 });
                 
-                // depthWrite: false помогает рендерить прозрачность
+                // depthWrite: false допомагає рендерити прозорість
                 indicator.setAttribute('material', {
                     color: '#667eea',
                     opacity: 0.3,
@@ -636,7 +637,7 @@
                         opacity: 0.2
                     });
 
-                    // Тоже добавляем depthWrite: false для линии
+                    // Теж додаємо depthWrite: false для лінії
                     line.setAttribute('material', {
                         shader: 'flat',
                         color: '#764ba2',
@@ -659,11 +660,11 @@
             let position;
             if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
                 const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-                // Позиция индикатора (на Z = -4.55)
+                // Позиція індикатора (на Z = -4.6)
                 position = predictivePattern[patternIndex]; 
                 
-                // Возвращаем хотспот на Z = -4.5, чтобы он был "ближе"
-                position = {x: position.x, y: position.y, z: position.z + 0.05};
+                // *** ВИПРАВЛЕННЯ 2 (частина Б): Повертаємо хотспот на Z = -4.5 ***
+                position = {x: position.x, y: position.y, z: position.z + 0.1};
 
             } else {
                 const x = (Math.random() * 3) - 1.5;
