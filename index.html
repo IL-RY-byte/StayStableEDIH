@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StayStable - Cerebellar Rehabilitation VR</title>
-    <!-- A-Frame for VR functionality -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-    <!-- Tone.js for audio feedback -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         body {
@@ -310,164 +308,36 @@
     </a-scene>
 
     <script>
-// ----------------------------------------------------
-// 1) TRAINING CONFIG
-// ----------------------------------------------------
-
-const CONFIG = {
-    pursuit: {
-        numHotspots: 5,
-        spawnDelay: 2000,
-        minDistance: 3,
-        maxDistance: 6,
-        predictiveMode: false,
-        fuseTimeout: 1000,
-        moveSpeed: 0.02
-    },
-    prediction: {
-        numHotspots: 3,
-        spawnDelay: 3000,
-        minDistance: 2,
-        maxDistance: 5,
-        predictiveMode: true,
-        fuseTimeout: 1500,
-        moveSpeed: 0.03
-    },
-    coordination: {
-        numHotspots: 8,
-        spawnDelay: 1500,
-        minDistance: 2.5,
-        maxDistance: 7,
-        predictiveMode: true,
-        fuseTimeout: 800,
-        moveSpeed: 0.04
-    }
-};
-
-// Active mode
-let ACTIVE_CONFIG = CONFIG.pursuit;
-
-
-// ----------------------------------------------------
-// 2) LEARNING ENGINE STATE
-// ----------------------------------------------------
-
-const LEARNING_DATA = {
-    fastComponent: 0,
-    slowComponent: 0,
-    totalLearning: 0,
-
-    decayRate: {
-        fast: 0.15,
-        slow: 0.04
-    },
-
-    trials: 0,
-    targetsHit: 0,
-    sessionStartTime: 0,
-
-    cursorVelocity: { x: 0, y: 0, z: 0 },
-    cursorHistory: [],
-    cursorHistoryLimit: 30,
-
-    anticipationScore: 0,
-    trackingAccuracy: 0,
-    predictionEfficiency: 0,
-
-    focusQuality: 0
-};
-
-
-// ----------------------------------------------------
-// 3) CURSOR TRACKING MODULE
-// ----------------------------------------------------
-
-let lastCursorPos = null;
-let lastCursorTime = null;
-let cursorTrackerInterval = null;
-let isTrainingActive = false;
-
-function startCursorTracking() {
-    if (cursorTrackerInterval) return;
-
-    cursorTrackerInterval = setInterval(() => {
-        const cam = document.querySelector('a-camera');
-
-        if (!cam) return;
-
-        // Получаем мировую позицию головы/камеры
-        const pos = cam.object3D.getWorldPosition(new THREE.Vector3());
-        const now = performance.now();
-
-        if (lastCursorPos !== null) {
-            const dt = (now - lastCursorTime) / 1000;
-
-            LEARNING_DATA.cursorVelocity = {
-                x: (pos.x - lastCursorPos.x) / dt,
-                y: (pos.y - lastCursorPos.y) / dt,
-                z: (pos.z - lastCursorPos.z) / dt
-            };
-        }
-
-        // Запоминаем позицию
-        lastCursorPos = pos.clone();
-        lastCursorTime = now;
-
-        // Сохраняем историю (не более 30 кадров)
-        LEARNING_DATA.cursorHistory.push({ x: pos.x, y: pos.y, z: pos.z });
-
-        if (LEARNING_DATA.cursorHistory.length > LEARNING_DATA.cursorHistoryLimit) {
-            LEARNING_DATA.cursorHistory.shift();
-        }
-
-    }, 50); // 20 FPS достаточно
-}
-
-function stopCursorTracking() {
-    clearInterval(cursorTrackerInterval);
-    cursorTrackerInterval = null;
-}
-
-
-// ----------------------------------------------------
-// 4) TRAINING SESSION MANAGER
-// ----------------------------------------------------
-
-function startTraining() {
-    if (isTrainingActive) return;
-
-    isTrainingActive = true;
-    LEARNING_DATA.sessionStartTime = performance.now();
-
-    startCursorTracking();
-
-    console.log("Training started, mode:", ACTIVE_CONFIG);
-}
-
-function stopTraining() {
-    isTrainingActive = false;
-    stopCursorTracking();
-
-    console.log("Training stopped.");
-}
-
-
-// ----------------------------------------------------
-// 5) EXPORT API
-// ----------------------------------------------------
-
-window.Training = {
-    start: startTraining,
-    stop: stopTraining,
-    setMode: (modeName) => {
-        if (CONFIG[modeName]) {
-            ACTIVE_CONFIG = CONFIG[modeName];
-            console.log("Mode switched:", modeName);
-        }
-    }
-};
-
-
+        // Core settings
+        const CONFIG = {
+            pursuit: {
+                numHotspots: 5,
+                spawnDelay: 2000,
+                minDistance: 3,
+                maxDistance: 6,
+                predictiveMode: false,
+                fuseTimeout: 1000,
+                moveSpeed: 0.02
+            },
+            prediction: {
+                numHotspots: 3,
+                spawnDelay: 3000,
+                minDistance: 2,
+                maxDistance: 5,
+                predictiveMode: true,
+                fuseTimeout: 1500,
+                moveSpeed: 0.03
+            },
+            coordination: {
+                numHotspots: 8,
+                spawnDelay: 1500,
+                minDistance: 2.5,
+                maxDistance: 7,
+                predictiveMode: true,
+                fuseTimeout: 800,
+                moveSpeed: 0.04
+            }
+        };
         
         // Current active configuration
         let ACTIVE_CONFIG = CONFIG.pursuit;
@@ -491,6 +361,11 @@ window.Training = {
             trackingAccuracy: 0,
             predictionEfficiency: 0
         };
+
+        // Cursor tracking variables
+        let lastCursorPos = null;
+        let cursorUpdateInterval = null;
+        let isTrainingActive = false;
 
         // Audio synth setup
         let synth;
@@ -744,12 +619,14 @@ window.Training = {
                     shader: 'flat'
                 });
                 
+                // --- ИСПРАВЛЕНО ---
                 indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
                 
                 if (index > 0) {
                     const prevPos = predictivePattern[index - 1];
                     const line = document.createElement('a-entity');
                     
+                    // --- ИСПРАВЛЕНО ---
                     line.setAttribute('line', {
                         start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`,
                         end: `${pos.x} ${pos.y} ${pos.z}`,
@@ -764,183 +641,97 @@ window.Training = {
             });
         }
 
-      // Generate a predictable pattern for targets
-function generatePredictivePattern() {
-  predictivePattern = [];
-  const patternLength = 8;
-  const radius = 3;
-  for (let i = 0; i < patternLength; i++) {
-    const angle = (i / patternLength) * Math.PI * 2;
-    const x = radius * Math.sin(angle * 2) * 0.7;
-    const y = radius * Math.sin(angle) * 0.3;
-    const z = -radius * 1.5;
-    predictivePattern.push({ x, y, z });
-  }
-  if (ACTIVE_CONFIG.predictiveMode) {
-    visualizePredictivePattern();
-  }
-}
+        // Create a new hotspot/target
+        function createHotspot() {
+            const hotspot = document.createElement('a-entity');
+            
+            let position;
+            if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
+                const patternIndex = Math.floor(Math.random() * predictivePattern.length);
+                position = predictivePattern[patternIndex];
+            } else {
+                const x = (Math.random() * 3) - 1.5;
+                const y = (Math.random() * 2) - 0.5;
+                const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
+                position = { x, y, z };
+            }
+            
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const radius = isMobile ? 0.35 : 0.25;
+            
+           // --- ИСПРАВЛЕНО ---
+           hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+           hotspot.setAttribute('geometry', {
+                primitive: 'sphere',
+                radius: radius
+            });
+            hotspot.setAttribute('material', {
+                shader: 'standard',
+                color: '#667eea',
+                emissive: '#764ba2',
+                emissiveIntensity: 0.8
+            });
+            hotspot.setAttribute('class', 'hotspot');
 
-// Create visual cues for the predictive pattern
-function visualizePredictivePattern() {
-  predictivePattern.forEach((pos, index) => {
-    const indicator = document.createElement('a-entity');
-    indicator.setAttribute('geometry', {
-      primitive: 'ring',
-      radiusInner: 0.05,
-      radiusOuter: 0.08
-    });
-    indicator.setAttribute('material', {
-      color: '#667eea',
-      opacity: 0.3,
-      transparent: true,
-      shader: 'flat'
-    });
-    indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`); // Corrected: Added backticks
-    if (index > 0) {
-      const prevPos = predictivePattern[index - 1];
-      const line = document.createElement('a-entity');
-      line.setAttribute('line', {
-        start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`, // Corrected: Added backticks
-        end: `${pos.x} ${pos.y} ${pos.z}`, // Corrected: Added backticks
-        color: '#764ba2',
-        opacity: 0.2
-      });
-      pathIndicators.appendChild(line);
-    }
-    pathIndicators.appendChild(indicator);
-  });
-}
+            // ---------------------
+            // RING (VR-SAFE variant)
+            // ---------------------
+            const ring = document.createElement('a-entity');
+            ring.setAttribute('geometry', {
+                primitive: 'ring',
+                radiusInner: radius * 1.33,
+                radiusOuter: radius * 1.67,
+                thetaLength: 0            // важно!
+            });
+            ring.setAttribute('material', {
+                color: '#FFFFFF',
+                opacity: 0.8,
+                transparent: true,
+                side: 'double'
+            });
+            ring.setAttribute('visible', false);
+            hotspot.appendChild(ring);
 
-// Create a new hotspot/target
-function createHotspot() {
-  const hotspot = document.createElement('a-entity');
-  let position;
-  if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
-    const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-    position = predictivePattern[patternIndex];
-  } else {
-    const x = (Math.random() * 3) - 1.5;
-    const y = (Math.random() * 2) - 0.5;
-    const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
-    position = { x, y, z };
-  }
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  const radius = isMobile ? 0.35 : 0.25;
-  hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`); // Corrected: Added backticks
-  hotspot.setAttribute('geometry', {
-    primitive: 'sphere',
-    radius: radius
-  });
-  hotspot.setAttribute('material', {
-    shader: 'standard',
-    color: '#667eea',
-    emissive: '#764ba2',
-    emissiveIntensity: 0.8
-  });
-  hotspot.setAttribute('class', 'hotspot');
-  // ---------------------
-  // RING (VR-SAFE variant)
-  // ---------------------
-  const ring = document.createElement('a-entity');
-  ring.setAttribute('geometry', {
-    primitive: 'ring',
-    radiusInner: radius * 1.33,
-    radiusOuter: radius * 1.67,
-    thetaLength: 0 // важно!
-  });
-  ring.setAttribute('material', {
-    color: '#FFFFFF',
-    opacity: 0.8,
-    transparent: true,
-    side: 'double'
-  });
-  ring.setAttribute('visible', false);
-  hotspot.appendChild(ring);
-  // ---------------------
-  // DATA
-  // ---------------------
-  hotspot.dataset.focusStartTime = 0;
-  hotspot.dataset.focusQuality = 0;
-  hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1;
-  // ---------------------
-  // EVENTS
-  // ---------------------
-  hotspot.addEventListener('mouseenter', function() {
-    hotspot.dataset.focusStartTime = Date.now();
-    ring.setAttribute('visible', true);
-    // безопасная анимация
-    ring.setAttribute('animation__fill', {
-      property: 'geometry.thetaLength',
-      from: 0,
-      to: 360,
-      dur: ACTIVE_CONFIG.fuseTimeout,
-      easing: 'linear'
-    });
-  });
-  hotspot.addEventListener('mouseleave', function() {
-    ring.setAttribute('visible', false);
-    // убрать анимацию
-    ring.removeAttribute('animation__fill');
-    // сброс угла, без пересоздания всей geometry (не ломает VR)
-    ring.setAttribute('geometry', {
-      primitive: 'ring',
-      radiusInner: radius * 1.33,
-      radiusOuter: radius * 1.67,
-      thetaLength: 0
-    });
-    hotspot.dataset.focusQuality = 0;
-  });
-  hotspot.addEventListener('click', function() {
-    const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
-    const focusQuality = Math.min(100, (focusDuration / ACTIVE_CONFIG.fuseTimeout) * 100);
-    const enhancedQuality = (focusQuality * 0.4) + (LEARNING_DATA.trackingAccuracy * 0.3) + (LEARNING_DATA.anticipationScore * 0.3);
-    LEARNING_DATA.focusQuality = enhancedQuality;
-    if (isAudioInitialized) {
-      window.focusSound(enhancedQuality);
-      setTimeout(() => window.successSound(), 300);
-    }
-    updateLearning(enhancedQuality);
-    this.setAttribute('animation', {
-      property: 'scale',
-      dur: 500,
-      to: '0 0 0',
-      easing: 'easeInOutQuad'
-    });
-    setTimeout(() => {
-      const index = activeHotspots.indexOf(this);
-      if (index > -1) activeHotspots.splice(index, 1);
-      this.parentNode.removeChild(this);
-      setTimeout(createHotspot, ACTIVE_CONFIG.spawnDelay);
-      LEARNING_DATA.targetsHit++;
-      targetsHitEl.textContent = LEARNING_DATA.targetsHit;
-      scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
-      if (LEARNING_DATA.targetsHit % 10 === 0) {
-        showMilestoneMessage();
-      }
-    }, 300);
-  });
-  if (ACTIVE_CONFIG.predictiveMode) {
-    hotspot.setAttribute('animation', {
-      property: 'position',
-      dur: 5000 + Math.random() * 5000,
-      easing: 'linear',
-      loop: true,
-      to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}` // Corrected: Added backticks
-    });
-  }
-  hotspotsContainer.appendChild(hotspot);
-  activeHotspots.push(hotspot);
-  hotspot.tick = (time, timeDelta) => {
-    if (!ACTIVE_CONFIG.predictiveMode) return;
-    const currentPos = hotspot.getAttribute('position');
-    const speed = ACTIVE_CONFIG.moveSpeed;
-    const dir = parseInt(hotspot.dataset.direction);
-    currentPos.x += Math.sin(time / 1000) * speed * dir;
-    currentPos.y += Math.cos(time / 2000) * speed * dir;
-    hotspot.setAttribute('position', currentPos);
-  };
-}
+            // ---------------------
+            // DATA
+            // ---------------------
+            hotspot.dataset.focusStartTime = 0;
+            hotspot.dataset.focusQuality = 0;
+            hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1;
+
+            // ---------------------
+            // EVENTS
+            // ---------------------
+            hotspot.addEventListener('mouseenter', function() {
+                hotspot.dataset.focusStartTime = Date.now();
+                ring.setAttribute('visible', true);
+
+                // безопасная анимация
+                ring.setAttribute('animation__fill', {
+                    property: 'geometry.thetaLength',
+                    from: 0,
+                    to: 360,
+                    dur: ACTIVE_CONFIG.fuseTimeout,
+                    easing: 'linear'
+                });
+            });
+
+            hotspot.addEventListener('mouseleave', function() {
+                ring.setAttribute('visible', false);
+
+                // убрать анимацию
+                ring.removeAttribute('animation__fill');
+
+                // сброс угла, без пересоздания всей geometry (не ломает VR)
+                ring.setAttribute('geometry', {
+                    primitive: 'ring',
+                    radiusInner: radius * 1.33,
+                    radiusOuter: radius * 1.67,
+                    thetaLength: 0
+                });
+
+                hotspot.dataset.focusQuality = 0;
+            });
 
             hotspot.addEventListener('click', function() {
                 const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
@@ -970,7 +761,9 @@ function createHotspot() {
                     const index = activeHotspots.indexOf(this);
                     if (index > -1) activeHotspots.splice(index, 1);
                     
-                    this.parentNode.removeChild(this);
+                    if (this.parentNode) {
+                        this.parentNode.removeChild(this);
+                    }
                     setTimeout(createHotspot, ACTIVE_CONFIG.spawnDelay);
                     
                     LEARNING_DATA.targetsHit++;
@@ -985,6 +778,7 @@ function createHotspot() {
             });
             
             if (ACTIVE_CONFIG.predictiveMode) {
+                // --- ИСПРАВЛЕНО ---
                 hotspot.setAttribute('animation', {
                     property: 'position',
                     dur: 5000 + Math.random() * 5000,
@@ -1030,6 +824,8 @@ function createHotspot() {
             LEARNING_DATA.totalLearning = LEARNING_DATA.fastComponent + LEARNING_DATA.slowComponent;
             
             learningProgress = Math.min(100, (LEARNING_DATA.totalLearning / 200) * 100);
+            
+            // --- ИСПРАВЛЕНО ---
             progressFill.style.width = `${learningProgress}%`;
             
             updateLearningUI();
@@ -1037,10 +833,13 @@ function createHotspot() {
         
         // Update UI with learning metrics
         function updateLearningUI() {
+            // --- ИСПРАВЛЕНО ---
             focusQualityEl.textContent = `${Math.round(LEARNING_DATA.focusQuality)}%`;
             
             const learningRate = LEARNING_DATA.trials > 1 ? 
                 Math.round(LEARNING_DATA.predictionEfficiency) : 0;
+            
+            // --- ИСПРАВЛЕНО ---
             learningRateEl.textContent = `${learningRate}%`;
         }
         
@@ -1057,6 +856,7 @@ function createHotspot() {
             } else if (LEARNING_DATA.targetsHit === 100) {
                 message = "Excellent progress! Long-term motor learning pathways forming.";
             } else {
+                // --- ИСПРАВЛЕНО ---
                 message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`;
             }
             
@@ -1077,6 +877,8 @@ function createHotspot() {
             const elapsedSec = Math.floor((Date.now() - LEARNING_DATA.sessionStartTime) / 1000);
             const minutes = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
             const seconds = (elapsedSec % 60).toString().padStart(2, '0');
+            
+            // --- ИСПРАВЛЕНО ---
             sessionTimeEl.textContent = `${minutes}:${seconds}`;
         }
         
@@ -1099,7 +901,10 @@ function createHotspot() {
         // Check if gaze is within bounds
         function checkOutOfBounds() {
             const camera = document.querySelector('a-camera');
+            if (!camera) return; // Добавлена проверка
+            
             const cameraRotation = camera.getAttribute('rotation');
+            if (!cameraRotation) return; // Добавлена проверка
             
             const yaw = cameraRotation.y;
             const pitch = cameraRotation.x;
@@ -1129,6 +934,7 @@ function createHotspot() {
             
             const instructionsEl = document.querySelector('.instructions');
             
+            // --- ИСПРАВЛЕНО (HTML вставлен в обратные кавычки) ---
             switch(mode) {
                 case 'pursuit':
                     instructionsEl.innerHTML = `
@@ -1214,5 +1020,5 @@ function createHotspot() {
             changeTrainingMode();
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99e716cefb7c2492',t:'MTc2MzEyOTM5Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
