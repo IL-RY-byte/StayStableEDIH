@@ -656,19 +656,17 @@ function visualizePredictivePattern() {
     });
 }
 
-       // Create a new hotspot/target
-// Create a new hotspot/target
+      // Create a new hotspot/target
 function createHotspot() {
     const hotspot = document.createElement('a-entity');
     
     let position;
     if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
         const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-        // Получаем позицию индикатора (с Z-отступом, напр. -4.6)
+        // Отримуємо позицію індикатора (з Z-відступом, напр. -4.6)
         position = predictivePattern[patternIndex]; 
         
-        // "Возвращаем" позицию хотспота, чтобы он был ближе (напр. -4.5)
-        // Убедитесь, что это значение (+0.1) соответствует отступу в generatePredictivePattern
+        // "Повертаємо" позицію хотспота, щоб він був ближче (напр. -4.5)
         position = {x: position.x, y: position.y, z: position.z + 0.1}; 
 
     } else {
@@ -682,16 +680,20 @@ function createHotspot() {
     const radius = isMobile ? 0.35 : 0.25;
     
     hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+    
+    // *** ЗМІНА 1: Змінюємо геометрію на 'icosahedron' ***
     hotspot.setAttribute('geometry', {
-        primitive: 'sphere',
+        primitive: 'icosahedron', // <-- ЗМІНЕНО зі 'sphere'
         radius: radius
     });
+    
+    // *** ЗМІНА 2: Спрощуємо матеріал до 'flat' ***
     hotspot.setAttribute('material', {
-        shader: 'standard',
-        color: '#667eea',
-        emissive: '#764ba2',
-        emissiveIntensity: 0.8
+        shader: 'flat', // <-- ЗМІНЕНО зі 'standard'
+        color: '#667eea'
+        // emissive-атрибути не потрібні для 'flat'
     });
+    
     hotspot.setAttribute('class', 'hotspot');
 
     // ---------------------
@@ -718,7 +720,7 @@ function createHotspot() {
     // ---------------------
     hotspot.dataset.focusStartTime = 0;
     hotspot.dataset.focusQuality = 0;
-    hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1; // Это можно удалить, если 'tick' не используется
+    hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1;
 
     // ---------------------
     // EVENTS
@@ -792,9 +794,8 @@ function createHotspot() {
         }, 300);
     });
     
-    // *** ВОЗВРАЩАЕМ АНИМАЦИЮ ***
+    // Використовуємо надійну 'animation' (а не 'tick')
     if (ACTIVE_CONFIG.predictiveMode) {
-        // Эта анимация будет двигать сферу по точкам пути
         hotspot.setAttribute('animation', {
             property: 'position',
             dur: 5000 + Math.random() * 5000,
@@ -807,8 +808,7 @@ function createHotspot() {
     hotspotsContainer.appendChild(hotspot);
     activeHotspots.push(hotspot);
     
-    // *** КОНФЛИКТНЫЙ БЛОК 'tick' УДАЛЕН ***
-    // hotspot.tick = (time, timeDelta) => { ... }
+    // 'tick' залишається видаленим, щоб уникнути конфлікту
 }
         
         // Update learning model
