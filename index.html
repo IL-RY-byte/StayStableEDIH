@@ -13,20 +13,8 @@
             font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-
-        .instructions {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            background: rgba(102, 126, 234, 0.9);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 999;
-            max-width: 320px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
+        
+        /* Старі 2D-стилі (більшість з них тепер не потрібні, але не заважають) */
         .crosshair {
             position: fixed;
             top: 50%;
@@ -35,210 +23,37 @@
             z-index: 999;
             pointer-events: none;
         }
-
-        .crosshair::before,
-        .crosshair::after {
-            content: '';
-            position: absolute;
-            background: white;
-            box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .crosshair::before {
-            width: 2px;
-            height: 20px;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .crosshair::after {
-            width: 20px;
-            height: 2px;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
+        .crosshair::before, .crosshair::after { content: ''; position: absolute; background: white; box-shadow: 0 0 4px rgba(0, 0, 0, 0.5); }
+        .crosshair::before { width: 2px; height: 20px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+        .crosshair::after { width: 20px; height: 2px; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+        .data-panel { position: fixed; top: 20px; right: 20px; background: rgba(118, 75, 162, 0.9); color: white; padding: 15px; border-radius: 10px; z-index: 999; min-width: 200px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .point-message { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(102, 126, 234, 0.95); color: white; padding: 15px; border-radius: 10px; z-index: 999; text-align: center; opacity: 1; transition: opacity 0.5s; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); }
+        .point-message.fade { opacity: 0; }
+        #orientation-message { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); color: white; display: flex; justify-content: center; align-items: center; font-size: 24px; text-align: center; z-index: 1000; }
+        .out-of-bounds-message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(255, 0, 0, 0.8); color: white; padding: 20px; border-radius: 10px; font-size: 1.5rem; z-index: 1001; display: none; }
+        .progress-bar { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); width: 300px; height: 20px; background: rgba(255, 255, 255, 0.2); border-radius: 10px; overflow: hidden; z-index: 999; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.5s; }
+        .session-stats { position: fixed; bottom: 20px; right: 20px; background: rgba(118, 75, 162, 0.9); color: white; padding: 15px; border-radius: 10px; z-index: 999; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .menu-button { cursor: pointer; } /* Додаємо курсор для нових кнопок */
+        
+        /* Ховаємо старі 2D-елементи */
+        .instructions, .mode-selector {
+            display: none !important;
         }
 
-        .data-panel {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(118, 75, 162, 0.9);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 999;
-            min-width: 200px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .point-message {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(102, 126, 234, 0.95);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 999;
-            text-align: center;
-            opacity: 1;
-            transition: opacity 0.5s;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .point-message.fade {
-            opacity: 0;
-        }
-
-        #orientation-message {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            text-align: center;
-            z-index: 1000;
-        }
-
-        .field-of-view {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 110vw;
-            height: 90vh;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 998;
-        }
-
-        .out-of-bounds-message {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            font-size: 1.5rem;
-            z-index: 1001;
-            display: none;
-        }
-        
-        .progress-bar {
-            position: fixed;
-            bottom: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 300px;
-            height: 20px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            overflow: hidden;
-            z-index: 999;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        
-        .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #667eea, #764ba2);
-            transition: width 0.5s;
-        }
-        
-        .session-stats {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(118, 75, 162, 0.9);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 999;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        .mode-selector {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(102, 126, 234, 0.9);
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            z-index: 999;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        
-        select, button {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 8px 15px;
-            border-radius: 5px;
-            margin: 5px 0;
-            cursor: pointer;
-            font-weight: 500;
-        }
-        
-        select:focus, button:focus {
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
-        }
-        
-        select:hover, button:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-        
-        .hotspot {
-            cursor: pointer;
-        }
-        
-        /* *** ВИДАЛЕНО СТИЛІ ДЛЯ .vr-stereo-mode *** */
-        
-        /* Stereo view container */
-        .a-canvas.a-stereo {
-            position: absolute !important;
-        }
-        
         /* Hide UI elements in VR mode */
-        body.vr-mode .instructions,
         body.vr-mode .data-panel,
         body.vr-mode .session-stats,
-        body.vr-mode .mode-selector,
-        /* body.vr-mode .vr-stereo-mode, */ /* <-- Видалено */
         body.vr-mode .progress-bar {
             display: none !important;
         }
-        
-        body.vr-mode .crosshair {
-            display: block !important;
-        }
+        body.vr-mode .crosshair { display: block !important; }
     </style>
 </head>
 <body>
-    <div id="orientation-message" style="display: none;">
-        Please rotate your device to landscape mode
-    </div>
-
-    <div class="instructions">
-        <h3>Cerebellar Rehabilitation Exercise</h3>
-        <p>Focus on dots and follow predictive patterns to train your cerebellum.</p>
-        <p>Each successful focus improves motor learning pathways.</p>
-    </div>
+    <div id="orientation-message" style="display: none;"></div>
 
     <div class="crosshair"></div>
-    <div class="field-of-view"></div>
     
     <div class="data-panel">
         <div>Score: <span id="score">0</span></div>
@@ -258,20 +73,11 @@
         <div>Targets hit: <span id="targets-hit">0</span></div>
     </div>
     
-    <div class="mode-selector">
-        <select id="training-mode">
-            <option value="pursuit">Pursuit Learning</option>
-            <option value="prediction">Prediction Training</option>
-            <option value="coordination">Coordination Exercise</option>
-        </select>
-        <button id="start-training">Start Training</button>
-    </div>
-    
-    <a-scene raycaster="objects: .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
+    <a-scene raycaster="objects: .menu-button, .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
         
         <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true" camera="near: 0.1; far: 20;">
             <a-entity
-            raycaster="objects: .hotspot; far: 20"
+            raycaster="objects: .menu-button, .hotspot; far: 20"
             position="0 0 -1"
             geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
             material="color: white; shader: flat"
@@ -280,8 +86,12 @@
         </a-camera>
 
         <a-sky color="#f0e6ff"></a-sky>
+        
         <a-entity id="hotspots"></a-entity>
         <a-entity id="path-indicators"></a-entity>
+        
+        <a-entity id="menu-container" position="0 1.6 -2">
+            </a-entity>
     </a-scene>
 
     <script>
@@ -316,70 +126,32 @@
             }
         };
         
-        // Current active configuration
-        let ACTIVE_CONFIG = CONFIG.pursuit;
+        // *** ЗМІНА: Початковий режим, можна змінити у VR-меню ***
+        let ACTIVE_CONFIG = CONFIG.prediction; // Починаємо з режиму "Prediction"
+        let selectedModeButton = null; // Зберігає обрану кнопку режиму
         
-        // Learning data with cursor tracking
+        // Learning data (без змін)
         const LEARNING_DATA = {
-            fastComponent: 0,
-            slowComponent: 0,
-            totalLearning: 0,
-            decayRate: {
-                fast: 0.15,
-                slow: 0.04
-            },
-            trials: 0,
-            targetsHit: 0,
-            sessionStartTime: 0,
-            focusQuality: 0,
-            cursorHistory: [],
-            cursorVelocity: { x: 0, y: 0, z: 0 },
-            anticipationScore: 0,
-            trackingAccuracy: 0,
-            predictionEfficiency: 0
+            fastComponent: 0, slowComponent: 0, totalLearning: 0,
+            decayRate: { fast: 0.15, slow: 0.04 },
+            trials: 0, targetsHit: 0, sessionStartTime: 0, focusQuality: 0,
+            cursorHistory: [], cursorVelocity: { x: 0, y: 0, z: 0 },
+            anticipationScore: 0, trackingAccuracy: 0, predictionEfficiency: 0
         };
 
-        // Cursor tracking variables
+        // ... (решта змінних без змін) ...
         let lastCursorPos = null;
         let cursorUpdateInterval = null;
         let isTrainingActive = false;
-
-        // Audio synth setup
         let synth;
         let isAudioInitialized = false;
         
         function initAudio() {
             if (isAudioInitialized) return;
-            
-            synth = new Tone.Synth({
-                oscillator: {
-                    type: "sine"
-                },
-                envelope: {
-                    attack: 0.01,
-                    decay: 0.1,
-                    sustain: 0.5,
-                    release: 0.4
-                }
-            }).toDestination();
-            
-            window.successSound = () => {
-                synth.triggerAttackRelease("C5", "16n");
-                setTimeout(() => synth.triggerAttackRelease("E5", "16n"), 100);
-                setTimeout(() => synth.triggerAttackRelease("G5", "16n"), 200);
-            };
-            
-            window.errorSound = () => {
-                synth.triggerAttackRelease("A3", "16n");
-                setTimeout(() => synth.triggerAttackRelease("G3", "16n"), 150);
-            };
-            
-            window.focusSound = (quality) => {
-                const note = 60 + Math.floor(quality / 5);
-                const freq = Tone.Frequency(note, "midi").toFrequency();
-                synth.triggerAttackRelease(freq, "32n");
-            };
-            
+            synth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.4 } }).toDestination();
+            window.successSound = () => { synth.triggerAttackRelease("C5", "16n"); setTimeout(() => synth.triggerAttackRelease("E5", "16n"), 100); setTimeout(() => synth.triggerAttackRelease("G5", "16n"), 200); };
+            window.errorSound = () => { synth.triggerAttackRelease("A3", "16n"); setTimeout(() => synth.triggerAttackRelease("G3", "16n"), 150); };
+            window.focusSound = (quality) => { const note = 60 + Math.floor(quality / 5); const freq = Tone.Frequency(note, "midi").toFrequency(); synth.triggerAttackRelease(freq, "32n"); };
             isAudioInitialized = true;
         }
 
@@ -396,123 +168,73 @@
         const learningRateEl = document.getElementById('learning-rate');
         const sessionTimeEl = document.getElementById('session-time');
         const targetsHitEl = document.getElementById('targets-hit');
-        const trainingModeEl = document.getElementById('training-mode');
-        const startTrainingBtn = document.getElementById('start-training');
-        // *** const vrStereoToggle = ... ВИДАЛЕНО ***
+        // *** 2D UI елементи видалено (trainingModeEl, startTrainingBtn) ***
+        const menuContainer = document.getElementById('menu-container'); // *** НОВИЙ елемент ***
 
         // Hotspots tracking
         let activeHotspots = [];
         let predictivePattern = [];
         let learningProgress = 0;
         let sessionTimer = null;
-        let isVRMode = false; // Ця змінна тепер керується A-Frame
+        let isVRMode = false;
         
-        // Calculate cursor velocity and update tracking
+        // ... (функції 'updateCursorTracking', 'getTargetCursorDistance', 'predictCursorPosition', 'calculateTrackingMetrics' без змін) ...
+        
         function updateCursorTracking() {
             if (!isTrainingActive) return;
-            
             const camera = document.querySelector('a-camera');
             if (!camera) return;
-            
             const cameraRotation = camera.getAttribute('rotation');
-            const currentPos = {
-                x: cameraRotation.y,
-                y: cameraRotation.x,
-                z: 0,
-                timestamp: Date.now()
-            };
-            
+            const currentPos = { x: cameraRotation.y, y: cameraRotation.x, z: 0, timestamp: Date.now() };
             if (lastCursorPos) {
                 const dt = (currentPos.timestamp - lastCursorPos.timestamp) / 1000;
-                if (dt > 0) {
-                    LEARNING_DATA.cursorVelocity = {
-                        x: (currentPos.x - lastCursorPos.x) / dt,
-                        y: (currentPos.y - lastCursorPos.y) / dt,
-                        z: 0
-                    };
-                }
+                if (dt > 0) { LEARNING_DATA.cursorVelocity = { x: (currentPos.x - lastCursorPos.x) / dt, y: (currentPos.y - lastCursorPos.y) / dt, z: 0 }; }
             }
-            
             LEARNING_DATA.cursorHistory.push(currentPos);
-            if (LEARNING_DATA.cursorHistory.length > 10) {
-                LEARNING_DATA.cursorHistory.shift();
-            }
-            
+            if (LEARNING_DATA.cursorHistory.length > 10) { LEARNING_DATA.cursorHistory.shift(); }
             lastCursorPos = currentPos;
-            
             calculateTrackingMetrics();
         }
-        
-        // Calculate distance between cursor and target in screen space
         function getTargetCursorDistance(target) {
             const camera = document.querySelector('a-camera');
             const cameraRotation = camera.getAttribute('rotation');
             const targetPos = target.getAttribute('position');
-            
             const dx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
             const dy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
-            
-            const angularDistance = Math.sqrt(
-                Math.pow(dx - cameraRotation.y, 2) +
-                Math.pow(dy - cameraRotation.x, 2)
-            );
-            
+            const angularDistance = Math.sqrt(Math.pow(dx - cameraRotation.y, 2) + Math.pow(dy - cameraRotation.x, 2));
             return angularDistance;
         }
-        
-        // Predict where cursor will be based on velocity
         function predictCursorPosition(timeAhead) {
             if (!lastCursorPos) return null;
-            
-            return {
-                x: lastCursorPos.x + LEARNING_DATA.cursorVelocity.x * timeAhead,
-                y: lastCursorPos.y + LEARNING_DATA.cursorVelocity.y * timeAhead
-            };
+            return { x: lastCursorPos.x + LEARNING_DATA.cursorVelocity.x * timeAhead, y: lastCursorPos.y + LEARNING_DATA.cursorVelocity.y * timeAhead };
         }
-        
-        // Calculate tracking metrics
         function calculateTrackingMetrics() {
             if (activeHotspots.length === 0) return;
-            
             let nearestTarget = null;
             let minDistance = Infinity;
-            
             activeHotspots.forEach(target => {
                 const dist = getTargetCursorDistance(target);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearestTarget = target;
-                }
+                if (dist < minDistance) { minDistance = dist; nearestTarget = target; }
             });
-            
             if (!nearestTarget) return;
-            
             LEARNING_DATA.trackingAccuracy = Math.max(0, 100 - minDistance * 10);
-            
             const predictedPos = predictCursorPosition(0.5);
             if (predictedPos) {
                 const targetPos = nearestTarget.getAttribute('position');
                 const predictedDx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
                 const predictedDy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
-                
-                const predictedDistance = Math.sqrt(
-                    Math.pow(predictedDx - predictedPos.x, 2) +
-                    Math.pow(predictedDy - predictedPos.y, 2)
-                );
-                
+                const predictedDistance = Math.sqrt(Math.pow(predictedDx - predictedPos.x, 2) + Math.pow(predictedDy - predictedPos.y, 2));
                 LEARNING_DATA.anticipationScore = Math.max(0, 100 - predictedDistance * 8);
             }
-            
-            LEARNING_DATA.predictionEfficiency = 
-                (LEARNING_DATA.trackingAccuracy * 0.4) + 
-                (LEARNING_DATA.anticipationScore * 0.6);
-            
+            LEARNING_DATA.predictionEfficiency = (LEARNING_DATA.trackingAccuracy * 0.4) + (LEARNING_DATA.anticipationScore * 0.6);
             updateLearningUI();
         }
-        
+
         // *** ФУНКЦІЯ ВИПРАВЛЕНА (Порядок завантаження) ***
-        // Initialize the session
         function initSession() {
+            // Ховаємо меню
+            hideMenu();
+            
             LEARNING_DATA.sessionStartTime = Date.now();
             LEARNING_DATA.trials = 0;
             LEARNING_DATA.targetsHit = 0;
@@ -529,13 +251,8 @@
             lastCursorPos = null;
             isTrainingActive = true;
             
-            while (hotspotsContainer.firstChild) {
-                hotspotsContainer.removeChild(hotspotsContainer.firstChild);
-            }
-            
-            while (pathIndicators.firstChild) {
-                pathIndicators.removeChild(pathIndicators.firstChild);
-            }
+            while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
+            while (pathIndicators.firstChild) { pathIndicators.removeChild(pathIndicators.firstChild); }
             
             activeHotspots = [];
             
@@ -548,12 +265,10 @@
             if (cursorUpdateInterval) clearInterval(cursorUpdateInterval);
             cursorUpdateInterval = setInterval(updateCursorTracking, 50);
             
-            // *** ВИПРАВЛЕННЯ: Спочатку генеруємо шлях ***
             if (ACTIVE_CONFIG.predictiveMode) {
                 generatePredictivePattern();
             }
             
-            // *** ...а ПОТІМ створюємо хотспоти ***
             for (let i = 0; i < ACTIVE_CONFIG.numHotspots; i++) {
                 setTimeout(() => createHotspot(), i * 500);
             }
@@ -561,394 +276,357 @@
             document.addEventListener('click', initAudio, { once: true });
         }
         
-        // Generate a predictable pattern for targets
+        // ... (функції 'generatePredictivePattern', 'visualizePredictivePattern', 'createHotspot' без змін) ...
+        
         function generatePredictivePattern() {
             predictivePattern = [];
             const patternLength = 8;
             const radius = 3;
-            
             for (let i = 0; i < patternLength; i++) {
                 const angle = (i / patternLength) * Math.PI * 2;
                 const x = radius * Math.sin(angle * 2) * 0.7;
                 const y = radius * Math.sin(angle) * 0.3;
-                
-                // *** ВИПРАВЛЕННЯ: Z-відступ, щоб шлях був позаду сфер ***
-                const z = -radius * 1.5 - 0.1; // (буде -4.6)
-                
+                const z = -radius * 1.5 - 0.1; // Z-відступ
                 predictivePattern.push({ x, y, z });
             }
-            
             if (ACTIVE_CONFIG.predictiveMode) {
                 visualizePredictivePattern();
             }
         }
-        
-        // Create visual cues for the predictive pattern
         function visualizePredictivePattern() {
             predictivePattern.forEach((pos, index) => {
                 const indicator = document.createElement('a-entity');
-                
-                indicator.setAttribute('geometry', {
-                    primitive: 'ring',
-                    radiusInner: 0.05,
-                    radiusOuter: 0.08
-                });
-                
-                // *** ВИПРАВЛЕННЯ: 'depthTest' та 'depthWrite' для коректної прозорості ***
-                indicator.setAttribute('material', {
-                    color: '#667eea',
-                    opacity: 0.3,
-                    transparent: true,
-                    shader: 'flat',
-                    depthTest: true,
-                    depthWrite: false
-                });
-                
+                indicator.setAttribute('geometry', { primitive: 'ring', radiusInner: 0.05, radiusOuter: 0.08 });
+                indicator.setAttribute('material', { color: '#667eea', opacity: 0.3, transparent: true, shader: 'flat', depthTest: true, depthWrite: false });
                 indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-                
                 if (index > 0) {
                     const prevPos = predictivePattern[index - 1];
                     const line = document.createElement('a-entity');
-                    
-                    line.setAttribute('line', {
-                        start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`,
-                        end: `${pos.x} ${pos.y} ${pos.z}`,
-                        color: '#764ba2',
-                        opacity: 0.2
-                    });
-
-                    // *** ВИПРАВЛЕННЯ: 'depthTest' та 'depthWrite' для коректної прозорості ***
-                    line.setAttribute('material', {
-                        shader: 'flat',
-                        color: '#764ba2',
-                        opacity: 0.2,
-                        transparent: true,
-                        depthTest: true,
-                        depthWrite: false
-                    });
-                    
+                    line.setAttribute('line', { start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`, end: `${pos.x} ${pos.y} ${pos.z}`, color: '#764ba2', opacity: 0.2 });
+                    line.setAttribute('material', { shader: 'flat', color: '#764ba2', opacity: 0.2, transparent: true, depthTest: true, depthWrite: false });
                     pathIndicators.appendChild(line);
                 }
-                
                 pathIndicators.appendChild(indicator);
             });
         }
-
-        // *** ФУНКЦІЯ ВИПРАВЛЕНА: Повертаємо сфери та надійну анімацію ***
-        // Create a new hotspot/target
         function createHotspot() {
             const hotspot = document.createElement('a-entity');
-            
             let position;
             if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
                 const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-                // Позиція індикатора (на Z = -4.6)
                 position = predictivePattern[patternIndex]; 
-                
-                // "Повертаємо" позицію хотспота, щоб він був ближче (на Z = -4.5)
-                position = {x: position.x, y: position.y, z: position.z + 0.1}; 
-
+                position = {x: position.x, y: position.y, z: position.z + 0.1}; // Повертаємо ближче
             } else {
                 const x = (Math.random() * 3) - 1.5;
                 const y = (Math.random() * 2) - 0.5;
                 const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
                 position = { x, y, z };
             }
-            
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const radius = isMobile ? 0.35 : 0.25;
-            
             hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
-            
-            // Повертаємо сфери
-            hotspot.setAttribute('geometry', {
-                primitive: 'sphere',
-                radius: radius
-            });
-            
-            hotspot.setAttribute('material', {
-                shader: 'standard',
-                color: '#667eea',
-                emissive: '#764ba2',
-                emissiveIntensity: 0.8
-            });
-            
+            hotspot.setAttribute('geometry', { primitive: 'sphere', radius: radius });
+            hotspot.setAttribute('material', { shader: 'standard', color: '#667eea', emissive: '#764ba2', emissiveIntensity: 0.8 });
             hotspot.setAttribute('class', 'hotspot');
-
-            // ---------------------
-            // RING (VR-SAFE variant)
-            // ---------------------
             const ring = document.createElement('a-entity');
-            ring.setAttribute('geometry', {
-                primitive: 'ring',
-                radiusInner: radius * 1.33,
-                radiusOuter: radius * 1.67,
-                thetaLength: 0
-            });
-            ring.setAttribute('material', {
-                color: '#FFFFFF',
-                opacity: 0.8,
-                transparent: true,
-                side: 'double'
-            });
+            ring.setAttribute('geometry', { primitive: 'ring', radiusInner: radius * 1.33, radiusOuter: radius * 1.67, thetaLength: 0 });
+            ring.setAttribute('material', { color: '#FFFFFF', opacity: 0.8, transparent: true, side: 'double' });
             ring.setAttribute('visible', false);
             hotspot.appendChild(ring);
-
-            // ---------------------
-            // DATA
-            // ---------------------
             hotspot.dataset.focusStartTime = 0;
             hotspot.dataset.focusQuality = 0;
-            // hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1; // Не потрібно без 'tick'
-
-            // ---------------------
-            // EVENTS
-            // ---------------------
             hotspot.addEventListener('mouseenter', function() {
                 hotspot.dataset.focusStartTime = Date.now();
                 ring.setAttribute('visible', true);
-
-                ring.setAttribute('animation__fill', {
-                    property: 'geometry.thetaLength',
-                    from: 0,
-                    to: 360,
-                    dur: ACTIVE_CONFIG.fuseTimeout,
-                    easing: 'linear'
-                });
+                ring.setAttribute('animation__fill', { property: 'geometry.thetaLength', from: 0, to: 360, dur: ACTIVE_CONFIG.fuseTimeout, easing: 'linear' });
             });
-
             hotspot.addEventListener('mouseleave', function() {
                 ring.setAttribute('visible', false);
                 ring.removeAttribute('animation__fill');
-                ring.setAttribute('geometry', {
-                    primitive: 'ring',
-                    radiusInner: radius * 1.33,
-                    radiusOuter: radius * 1.67,
-                    thetaLength: 0
-                });
+                ring.setAttribute('geometry', { primitive: 'ring', radiusInner: radius * 1.33, radiusOuter: radius * 1.67, thetaLength: 0 });
                 hotspot.dataset.focusQuality = 0;
             });
-
             hotspot.addEventListener('click', function() {
                 const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
                 const focusQuality = Math.min(100, (focusDuration / ACTIVE_CONFIG.fuseTimeout) * 100);
-                
-                const enhancedQuality = (focusQuality * 0.4) + 
-                                       (LEARNING_DATA.trackingAccuracy * 0.3) + 
-                                       (LEARNING_DATA.anticipationScore * 0.3);
-                
+                const enhancedQuality = (focusQuality * 0.4) + (LEARNING_DATA.trackingAccuracy * 0.3) + (LEARNING_DATA.anticipationScore * 0.3);
                 LEARNING_DATA.focusQuality = enhancedQuality;
-                
-                if (isAudioInitialized) {
-                    window.focusSound(enhancedQuality);
-                    setTimeout(() => window.successSound(), 300);
-                }
-                
+                if (isAudioInitialized) { window.focusSound(enhancedQuality); setTimeout(() => window.successSound(), 300); }
                 updateLearning(enhancedQuality);
-                
-                // Даємо анімації унікальне ім'я
-                this.setAttribute('animation__scale', {
-                    property: 'scale',
-                    dur: 500,
-                    to: '0 0 0',
-                    easing: 'easeInOutQuad'
-                });
-                
+                this.setAttribute('animation__scale', { property: 'scale', dur: 500, to: '0 0 0', easing: 'easeInOutQuad' });
                 setTimeout(() => {
                     const index = activeHotspots.indexOf(this);
                     if (index > -1) activeHotspots.splice(index, 1);
-                    
-                    if (this.parentNode) {
-                        this.parentNode.removeChild(this);
-                    }
+                    if (this.parentNode) { this.parentNode.removeChild(this); }
                     setTimeout(createHotspot, ACTIVE_CONFIG.spawnDelay);
-                    
                     LEARNING_DATA.targetsHit++;
                     targetsHitEl.textContent = LEARNING_DATA.targetsHit;
-                    
                     scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
-                    
-                    if (LEARNING_DATA.targetsHit % 10 === 0) {
-                        showMilestoneMessage();
-                    }
+                    if (LEARNING_DATA.targetsHit % 10 === 0) { showMilestoneMessage(); }
                 }, 300);
             });
-            
-            // *** ВИПРАВЛЕННЯ: Використовуємо надійну 'animation' (а не 'tick') ***
             if (ACTIVE_CONFIG.predictiveMode) {
-                hotspot.setAttribute('animation__move', { // Даємо унікальне ім'я
-                    property: 'position',
-                    dur: 5000 + Math.random() * 5000,
-                    easing: 'linear',
-                    loop: true,
-                    to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}`
-                });
+                hotspot.setAttribute('animation__move', { property: 'position', dur: 5000 + Math.random() * 5000, easing: 'linear', loop: true, to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}` });
             }
-            
             hotspotsContainer.appendChild(hotspot);
             activeHotspots.push(hotspot);
-            
-            // *** 'tick' видалено, щоб уникнути конфлікту ***
         }
+
+        // ... (функції 'updateLearning', 'updateLearningUI', 'showMilestoneMessage', 'updateSessionTime', 'updateScoreUI', 'checkOrientation', 'checkOutOfBounds' без змін) ...
         
-        // Update learning model
         function updateLearning(focusQuality) {
             LEARNING_DATA.trials++;
-            
             const learningFactor = focusQuality / 100;
-            
-            if (LEARNING_DATA.trials < 20) {
-                LEARNING_DATA.fastComponent += (10 * learningFactor);
-            } else {
-                LEARNING_DATA.fastComponent *= (1 - LEARNING_DATA.decayRate.fast);
-                LEARNING_DATA.fastComponent += (5 * learningFactor);
-            }
-            
+            if (LEARNING_DATA.trials < 20) { LEARNING_DATA.fastComponent += (10 * learningFactor); } else { LEARNING_DATA.fastComponent *= (1 - LEARNING_DATA.decayRate.fast); LEARNING_DATA.fastComponent += (5 * learningFactor); }
             LEARNING_DATA.slowComponent *= (1 - LEARNING_DATA.decayRate.slow);
             LEARNING_DATA.slowComponent += (2 * learningFactor * Math.log(LEARNING_DATA.trials + 1));
-            
             LEARNING_DATA.totalLearning = LEARNING_DATA.fastComponent + LEARNING_DATA.slowComponent;
-            
             learningProgress = Math.min(100, (LEARNING_DATA.totalLearning / 200) * 100);
             progressFill.style.width = `${learningProgress}%`;
-            
             updateLearningUI();
         }
-        
-        // Update UI with learning metrics
         function updateLearningUI() {
             focusQualityEl.textContent = `${Math.round(LEARNING_DATA.focusQuality)}%`;
-            
-            const learningRate = LEARNING_DATA.trials > 1 ? 
-                Math.round(LEARNING_DATA.predictionEfficiency) : 0;
+            const learningRate = LEARNING_DATA.trials > 1 ? Math.round(LEARNING_DATA.predictionEfficiency) : 0;
             learningRateEl.textContent = `${learningRate}%`;
         }
-        
-        // Show milestone message
         function showMilestoneMessage() {
             let message;
-            
-            if (LEARNING_DATA.targetsHit === 10) {
-                message = "Initial learning phase complete! Your cerebellum is adapting.";
-            } else if (LEARNING_DATA.targetsHit === 25) {
-                message = "Fast learning engaged! Your cerebellar cortex is showing activity.";
-            } else if (LEARNING_DATA.targetsHit === 50) {
-                message = "Consolidation beginning! Memory transferring to cerebellar nuclei.";
-            } else if (LEARNING_DATA.targetsHit === 100) {
-                message = "Excellent progress! Long-term motor learning pathways forming.";
-            } else {
-                message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`;
-            }
-            
+            if (LEARNING_DATA.targetsHit === 10) { message = "Initial learning phase complete! Your cerebellum is adapting."; }
+            else if (LEARNING_DATA.targetsHit === 25) { message = "Fast learning engaged! Your cerebellar cortex is showing activity."; }
+            else if (LEARNING_DATA.targetsHit === 50) { message = "Consolidation beginning! Memory transferring to cerebellar nuclei."; }
+            else if (LEARNING_DATA.targetsHit === 100) { message = "Excellent progress! Long-term motor learning pathways forming."; }
+            else { message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`; }
             pointMessage.textContent = message;
             pointMessage.style.display = 'block';
             pointMessage.classList.remove('fade');
-            
-            setTimeout(() => {
-                pointMessage.classList.add('fade');
-                setTimeout(() => {
-                    pointMessage.style.display = 'none';
-                }, 500);
-            }, 5000);
+            setTimeout(() => { pointMessage.classList.add('fade'); setTimeout(() => { pointMessage.style.display = 'none'; }, 500); }, 5000);
         }
-        
-        // Update session time display
         function updateSessionTime() {
             const elapsedSec = Math.floor((Date.now() - LEARNING_DATA.sessionStartTime) / 1000);
             const minutes = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
             const seconds = (elapsedSec % 60).toString().padStart(2, '0');
             sessionTimeEl.textContent = `${minutes}:${seconds}`;
         }
-        
-        // Update score display
-        function updateScoreUI() {
-            scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
-        }
-        
-        // Check device orientation
+        function updateScoreUI() { scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning); }
         function checkOrientation() {
-            if (window.innerHeight > window.innerWidth) {
-                orientationMessage.style.display = 'flex';
-                scene.pause();
-            } else {
-                orientationMessage.style.display = 'none';
-                scene.play();
-            }
+            if (window.innerHeight > window.innerWidth) { orientationMessage.style.display = 'flex'; scene.pause(); }
+            else { orientationMessage.style.display = 'none'; scene.play(); }
         }
-        
-        // Check if gaze is within bounds
         function checkOutOfBounds() {
             const camera = document.querySelector('a-camera');
             if (!camera) return; 
-            
             const cameraRotation = camera.getAttribute('rotation');
             if (!cameraRotation) return; 
-            
-            const yaw = cameraRotation.y;
-            const pitch = cameraRotation.x;
-            
-            const yawLimit = 45;
-            const pitchLimit = 30;
-            
+            const yaw = cameraRotation.y; const pitch = cameraRotation.x;
+            const yawLimit = 45; const pitchLimit = 30;
             if (Math.abs(yaw) > yawLimit || Math.abs(pitch) > pitchLimit) {
                 outOfBoundsMessage.style.display = 'block';
-                if (navigator.vibrate) {
-                    navigator.vibrate(200);
-                }
-                
-                if (LEARNING_DATA.fastComponent > 0) {
-                    LEARNING_DATA.fastComponent *= 0.95;
-                    updateLearningUI();
-                }
-            } else {
-                outOfBoundsMessage.style.display = 'none';
-            }
+                if (navigator.vibrate) { navigator.vibrate(200); }
+                if (LEARNING_DATA.fastComponent > 0) { LEARNING_DATA.fastComponent *= 0.95; updateLearningUI(); }
+            } else { outOfBoundsMessage.style.display = 'none'; }
         }
-        
-        // Change training mode
-        function changeTrainingMode() {
-            const mode = trainingModeEl.value;
+
+        // *** 'changeTrainingMode' видалено (замінено VR-меню) ***
+
+        // *** НОВІ ФУНКЦІЇ ДЛЯ VR-МЕНЮ ***
+
+        /**
+         * Створює головне VR-меню
+         */
+        function createMainMenu() {
+            // Очищуємо контейнер, якщо там щось було
+            while (menuContainer.firstChild) {
+                menuContainer.removeChild(menuContainer.firstChild);
+            }
+            menuContainer.setAttribute('visible', true);
+
+            // Створюємо заголовок
+            const title = document.createElement('a-text');
+            title.setAttribute('value', 'StayStable VR');
+            title.setAttribute('position', '0 0.8 0');
+            title.setAttribute('align', 'center');
+            title.setAttribute('width', '4');
+            title.setAttribute('color', '#FFFFFF');
+            menuContainer.appendChild(title);
+
+            // --- Кнопки вибору режиму ---
+            const modeTitle = document.createElement('a-text');
+            modeTitle.setAttribute('value', 'Select Mode:');
+            modeTitle.setAttribute('position', '0 0.5 0');
+            modeTitle.setAttribute('align', 'center');
+            modeTitle.setAttribute('width', '3');
+            modeTitle.setAttribute('color', '#DDDDDD');
+            menuContainer.appendChild(modeTitle);
+
+            // Кнопка 1: Pursuit
+            const pursuitBtn = createMenuButton({
+                text: 'Pursuit',
+                position: '-0.8 0.2 0',
+                mode: 'pursuit'
+            });
+            menuContainer.appendChild(pursuitBtn);
+
+            // Кнопка 2: Prediction
+            const predictionBtn = createMenuButton({
+                text: 'Prediction',
+                position: '0 0.2 0',
+                mode: 'prediction'
+            });
+            menuContainer.appendChild(predictionBtn);
+
+            // Кнопка 3: Coordination
+            const coordBtn = createMenuButton({
+                text: 'Coordination',
+                position: '0.8 0.2 0',
+                mode: 'coordination'
+            });
+            menuContainer.appendChild(coordBtn);
+
+            // Встановлюємо "Prediction" як обраний за замовчуванням
+            selectMode(predictionBtn, 'prediction');
+
+            // --- Головні кнопки ---
+            
+            // Кнопка 4: Start Training
+            const startBtn = createMenuButton({
+                text: 'Start Training',
+                position: '0 -0.4 0',
+                radius: 0.3,
+                color: '#4CAF50', // Зелений
+                onClick: () => {
+                    initSession();
+                    initAudio();
+                }
+            });
+            menuContainer.appendChild(startBtn);
+
+            // Кнопка 5: Calibration
+            const calibBtn = createMenuButton({
+                text: 'Calibration',
+                position: '-0.8 -0.4 0',
+                color: '#2196F3', // Синій
+                onClick: startCalibration
+            });
+            menuContainer.appendChild(calibBtn);
+
+            // Кнопка 6: Recommendations
+            const recBtn = createMenuButton({
+                text: 'Recommendations',
+                position: '0.8 -0.4 0',
+                color: '#FF9800', // Помаранчевий
+                onClick: showRecommendations
+            });
+            menuContainer.appendChild(recBtn);
+        }
+
+        /**
+         * Допоміжна функція для створення кнопки меню
+         * @param {object} config - { text, position, radius, color, mode, onClick }
+         */
+        function createMenuButton(config) {
+            const { text, position, radius = 0.2, color = '#667eea', mode, onClick } = config;
+            
+            const button = document.createElement('a-entity');
+            button.setAttribute('position', position);
+
+            // Сфера (кнопка)
+            const sphere = document.createElement('a-entity');
+            sphere.setAttribute('geometry', { primitive: 'sphere', radius: radius });
+            sphere.setAttribute('material', { shader: 'standard', color: color, emissive: color, emissiveIntensity: 0.3 });
+            sphere.setAttribute('class', 'menu-button'); // Клас для raycaster
+            sphere.dataset.originalColor = color; // Зберігаємо колір
+            
+            // Текст над сферою
+            const label = document.createElement('a-text');
+            label.setAttribute('value', text);
+            label.setAttribute('position', `0 ${radius + 0.1} 0`);
+            label.setAttribute('align', 'center');
+            label.setAttribute('width', '2');
+            
+            // Анімація при наведенні
+            sphere.addEventListener('mouseenter', () => {
+                sphere.setAttribute('animation__scale', {
+                    property: 'scale',
+                    to: '1.2 1.2 1.2',
+                    dur: 200
+                });
+            });
+            sphere.addEventListener('mouseleave', () => {
+                sphere.setAttribute('animation__scale', {
+                    property: 'scale',
+                    to: '1 1 1',
+                    dur: 200
+                });
+            });
+
+            // Логіка кліку
+            if (onClick) {
+                sphere.addEventListener('click', onClick);
+            } else if (mode) {
+                // Це кнопка вибору режиму
+                sphere.addEventListener('click', () => {
+                    selectMode(sphere, mode);
+                });
+            }
+            
+            button.appendChild(sphere);
+            button.appendChild(label);
+            return button;
+        }
+
+        /**
+         * Вибір режиму тренування
+         */
+        function selectMode(clickedButton, mode) {
+            // "Знімаємо виділення" з попередньої кнопки
+            if (selectedModeButton) {
+                selectedModeButton.setAttribute('material', { 
+                    color: selectedModeButton.dataset.originalColor,
+                    emissive: selectedModeButton.dataset.originalColor
+                });
+            }
+            
+            // "Виділяємо" нову кнопку
+            clickedButton.setAttribute('material', { 
+                color: '#FFFFFF', // Білий
+                emissive: '#FFFFFF'
+            });
+            
+            // Зберігаємо вибір
+            selectedModeButton = clickedButton;
             ACTIVE_CONFIG = CONFIG[mode];
-            
-            const instructionsEl = document.querySelector('.instructions');
-            
-            switch(mode) {
-                case 'pursuit':
-                    instructionsEl.innerHTML = `
-                        <h3>Pursuit Learning Exercise</h3>
-                        <p>Focus on dots and track them carefully to train smooth pursuit pathways.</p>
-                    `;
-                    break;
-                case 'prediction':
-                    instructionsEl.innerHTML = `
-                        <h3>Prediction Training Exercise</h3>
-                        <p>Anticipate target movements before they occur to enhance predictive motor learning.</p>
-                    `;
-                    break;
-                case 'coordination':
-                    instructionsEl.innerHTML = `
-                        <h3>Coordination Exercise</h3>
-                        <p>Track multiple moving targets to improve complex cerebellar coordination pathways.</p>
-                    `;
-                    break;
-            }
+            console.log("VR Mode selected:", mode);
         }
-        
-        // *** ФУНКЦІЯ 'toggleVRStereoMode' ВИДАЛЕНА ***
-        
+
+        /**
+         * Ховає головне меню
+         */
+        function hideMenu() {
+            menuContainer.setAttribute('visible', 'false');
+        }
+
+        /**
+         * (Заглушка) Починає калібрування
+         */
+        function startCalibration() {
+            console.log("Calibration started...");
+            // Тут може бути логіка для калібрування
+        }
+
+        /**
+         * (Заглушка) Показує рекомендації
+         */
+        function showRecommendations() {
+            console.log("Showing recommendations...");
+            // Тут може бути логіка для показу рекомендацій
+        }
+
+
         // Event listeners
         window.addEventListener('resize', checkOrientation);
         window.addEventListener('orientationchange', checkOrientation);
-        trainingModeEl.addEventListener('change', changeTrainingMode);
-        
-        // *** СЛУХАЧ КНОПКИ "START" ВИПРАВЛЕНО ***
-        startTrainingBtn.addEventListener('click', () => {
-            // Тепер запускає обраний режим, а не 'pursuit'
-            initSession();
-            initAudio();
-        });
-        
-        // *** СЛУХАЧ 'vrStereoToggle' ВИДАЛЕНО ***
+        // *** Старі слухачі (trainingModeEl, startTrainingBtn) видалено ***
         
         scene.addEventListener('enter-vr', () => {
             isVRMode = true;
@@ -964,7 +642,8 @@
         
         scene.addEventListener('loaded', () => {
             checkOrientation();
-            changeTrainingMode(); // Встановлюємо початковий режим
+            // *** ВИКЛИКАЄМО СТВОРЕННЯ VR-МЕНЮ ЗАМІСТЬ 2D UI ***
+            createMainMenu();
         });
     </script>
 </body>
