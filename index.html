@@ -14,7 +14,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
         
-        /* Старі 2D-стилі (більшість з них тепер не потрібні, але не заважають) */
+        /* 2D UI (в основном для не-VR режима) */
         .crosshair {
             position: fixed;
             top: 50%;
@@ -34,11 +34,15 @@
         .progress-bar { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); width: 300px; height: 20px; background: rgba(255, 255, 255, 0.2); border-radius: 10px; overflow: hidden; z-index: 999; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
         .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.5s; }
         .session-stats { position: fixed; bottom: 20px; right: 20px; background: rgba(118, 75, 162, 0.9); color: white; padding: 15px; border-radius: 10px; z-index: 999; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .menu-button { cursor: pointer; } /* Додаємо курсор для нових кнопок */
         
-        /* Ховаємо старі 2D-елементи */
+        /* Скрываем старые 2D-элементы */
         .instructions, .mode-selector {
             display: none !important;
+        }
+
+        /* Классы для кнопок VR */
+        .menu-button, .game-control-button { 
+            cursor: pointer; 
         }
 
         /* Hide UI elements in VR mode */
@@ -66,22 +70,22 @@
     </div>
 
     <div class="point-message" style="display: none;"></div>
-    <div class="out-of-bounds-message">Return to center position</div>
+    <div class="out-of-bounds-message"></div>
     
     <div class="session-stats">
         <div>Session time: <span id="session-time">00:00</span></div>
         <div>Targets hit: <span id="targets-hit">0</span></div>
     </div>
     
-    <a-scene raycaster="objects: .menu-button, .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
+    <a-scene raycaster="objects: .menu-button, .hotspot, .game-control-button; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
         
         <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true" camera="near: 0.1; far: 20;">
             <a-entity
-            raycaster="objects: .menu-button, .hotspot; far: 20"
+            raycaster="objects: .menu-button, .hotspot, .game-control-button; far: 20"
             position="0 0 -1"
             geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
             material="color: white; shader: flat"
-            cursor="fuse: true; fuseTimeout: 1000">
+            cursor="fuse: true; fuseTimeout: 2000"> 
             </a-entity>
         </a-camera>
 
@@ -90,47 +94,39 @@
         <a-entity id="hotspots"></a-entity>
         <a-entity id="path-indicators"></a-entity>
         
-        <a-entity id="menu-container" position="0 1.6 -2">
-            </a-entity>
+        <a-entity id="menu-container" position="0 1.6 -2.5"></a-entity>
+        
+        <a-entity id="in-game-controls-container"></a-entity>
+        
     </a-scene>
 
     <script>
         // Core settings
         const CONFIG = {
             pursuit: {
-                numHotspots: 5,
-                spawnDelay: 2000,
-                minDistance: 3,
-                maxDistance: 6,
-                predictiveMode: false,
-                fuseTimeout: 1000,
-                moveSpeed: 0.02
+                name: "Pursuit",
+                description: "Track moving targets.",
+                numHotspots: 5, spawnDelay: 2000, minDistance: 3, maxDistance: 6,
+                predictiveMode: false, fuseTimeout: 1000, moveSpeed: 0.02
             },
             prediction: {
-                numHotspots: 3,
-                spawnDelay: 3000,
-                minDistance: 2,
-                maxDistance: 5,
-                predictiveMode: true,
-                fuseTimeout: 1500,
-                moveSpeed: 0.03
+                name: "Prediction",
+                description: "Anticipate target paths.",
+                numHotspots: 3, spawnDelay: 3000, minDistance: 2, maxDistance: 5,
+                predictiveMode: true, fuseTimeout: 1500, moveSpeed: 0.03
             },
             coordination: {
-                numHotspots: 8,
-                spawnDelay: 1500,
-                minDistance: 2.5,
-                maxDistance: 7,
-                predictiveMode: true,
-                fuseTimeout: 800,
-                moveSpeed: 0.04
+                name: "Coordination",
+                description: "Track multiple complex targets.",
+                numHotspots: 8, spawnDelay: 1500, minDistance: 2.5, maxDistance: 7,
+                predictiveMode: true, fuseTimeout: 800, moveSpeed: 0.04
             }
         };
         
-        // *** ЗМІНА: Початковий режим, можна змінити у VR-меню ***
-        let ACTIVE_CONFIG = CONFIG.prediction; // Починаємо з режиму "Prediction"
-        let selectedModeButton = null; // Зберігає обрану кнопку режиму
+        let ACTIVE_CONFIG = CONFIG.prediction; // Начинаем с режима "Prediction"
+        let selectedModeButton = null; // Хранит выбранную кнопку режима
         
-        // Learning data (без змін)
+        // Learning data (без изменений)
         const LEARNING_DATA = {
             fastComponent: 0, slowComponent: 0, totalLearning: 0,
             decayRate: { fast: 0.15, slow: 0.04 },
@@ -139,7 +135,7 @@
             anticipationScore: 0, trackingAccuracy: 0, predictionEfficiency: 0
         };
 
-        // ... (решта змінних без змін) ...
+        // ... (остальные переменные без изменений) ...
         let lastCursorPos = null;
         let cursorUpdateInterval = null;
         let isTrainingActive = false;
@@ -159,6 +155,8 @@
         const scene = document.querySelector('a-scene');
         const hotspotsContainer = document.querySelector('#hotspots');
         const pathIndicators = document.querySelector('#path-indicators');
+        const menuContainer = document.getElementById('menu-container');
+        const inGameControlsContainer = document.getElementById('in-game-controls-container'); // *** НОВЫЙ ***
         const pointMessage = document.querySelector('.point-message');
         const orientationMessage = document.getElementById('orientation-message');
         const outOfBoundsMessage = document.querySelector('.out-of-bounds-message');
@@ -168,8 +166,6 @@
         const learningRateEl = document.getElementById('learning-rate');
         const sessionTimeEl = document.getElementById('session-time');
         const targetsHitEl = document.getElementById('targets-hit');
-        // *** 2D UI елементи видалено (trainingModeEl, startTrainingBtn) ***
-        const menuContainer = document.getElementById('menu-container'); // *** НОВИЙ елемент ***
 
         // Hotspots tracking
         let activeHotspots = [];
@@ -178,13 +174,14 @@
         let sessionTimer = null;
         let isVRMode = false;
         
-        // ... (функції 'updateCursorTracking', 'getTargetCursorDistance', 'predictCursorPosition', 'calculateTrackingMetrics' без змін) ...
+        // ... (функции 'updateCursorTracking', 'getTargetCursorDistance', 'predictCursorPosition', 'calculateTrackingMetrics' без изменений) ...
         
         function updateCursorTracking() {
             if (!isTrainingActive) return;
             const camera = document.querySelector('a-camera');
             if (!camera) return;
             const cameraRotation = camera.getAttribute('rotation');
+            if (!cameraRotation) return; // Добавлена проверка
             const currentPos = { x: cameraRotation.y, y: cameraRotation.x, z: 0, timestamp: Date.now() };
             if (lastCursorPos) {
                 const dt = (currentPos.timestamp - lastCursorPos.timestamp) / 1000;
@@ -197,7 +194,9 @@
         }
         function getTargetCursorDistance(target) {
             const camera = document.querySelector('a-camera');
+            if (!camera) return {x:0,y:0,z:0}; // Добавлена проверка
             const cameraRotation = camera.getAttribute('rotation');
+            if (!cameraRotation) return {x:0,y:0,z:0}; // Добавлена проверка
             const targetPos = target.getAttribute('position');
             const dx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
             const dy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
@@ -230,10 +229,14 @@
             updateLearningUI();
         }
 
-        // *** ФУНКЦІЯ ВИПРАВЛЕНА (Порядок завантаження) ***
+        /**
+         * *** ИЗМЕНЕНО: Добавляет игровые кнопки ***
+         */
         function initSession() {
-            // Ховаємо меню
+            // Скрываем меню
             hideMenu();
+            // Показываем игровые кнопки
+            createInGameControls();
             
             LEARNING_DATA.sessionStartTime = Date.now();
             LEARNING_DATA.trials = 0;
@@ -251,6 +254,7 @@
             lastCursorPos = null;
             isTrainingActive = true;
             
+            // Очистка контейнеров (уже есть в clearAll, но пусть будет)
             while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
             while (pathIndicators.firstChild) { pathIndicators.removeChild(pathIndicators.firstChild); }
             
@@ -276,7 +280,7 @@
             document.addEventListener('click', initAudio, { once: true });
         }
         
-        // ... (функції 'generatePredictivePattern', 'visualizePredictivePattern', 'createHotspot' без змін) ...
+        // ... (функции 'generatePredictivePattern', 'visualizePredictivePattern', 'createHotspot' без изменений) ...
         
         function generatePredictivePattern() {
             predictivePattern = [];
@@ -286,7 +290,7 @@
                 const angle = (i / patternLength) * Math.PI * 2;
                 const x = radius * Math.sin(angle * 2) * 0.7;
                 const y = radius * Math.sin(angle) * 0.3;
-                const z = -radius * 1.5 - 0.1; // Z-відступ
+                const z = -radius * 1.5 - 0.1; // Z-отступ
                 predictivePattern.push({ x, y, z });
             }
             if (ACTIVE_CONFIG.predictiveMode) {
@@ -372,7 +376,7 @@
             activeHotspots.push(hotspot);
         }
 
-        // ... (функції 'updateLearning', 'updateLearningUI', 'showMilestoneMessage', 'updateSessionTime', 'updateScoreUI', 'checkOrientation', 'checkOutOfBounds' без змін) ...
+        // ... (функции 'updateLearning', 'updateLearningUI', 'showMilestoneMessage', 'updateSessionTime', 'updateScoreUI', 'checkOrientation', 'checkOutOfBounds' без изменений) ...
         
         function updateLearning(focusQuality) {
             LEARNING_DATA.trials++;
@@ -410,8 +414,8 @@
         }
         function updateScoreUI() { scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning); }
         function checkOrientation() {
-            if (window.innerHeight > window.innerWidth) { orientationMessage.style.display = 'flex'; scene.pause(); }
-            else { orientationMessage.style.display = 'none'; scene.play(); }
+            if (!isVRMode && window.innerHeight > window.innerWidth) { orientationMessage.style.display = 'flex'; scene.pause(); }
+            else { orientationMessage.style.display = 'none'; if(scene) scene.play(); }
         }
         function checkOutOfBounds() {
             const camera = document.querySelector('a-camera');
@@ -427,21 +431,88 @@
             } else { outOfBoundsMessage.style.display = 'none'; }
         }
 
-        // *** 'changeTrainingMode' видалено (замінено VR-меню) ***
-
-        // *** НОВІ ФУНКЦІЇ ДЛЯ VR-МЕНЮ ***
+        // *** НОВЫЕ И ИЗМЕНЕННЫЕ ФУНКЦИИ ДЛЯ VR-МЕНЮ ***
 
         /**
-         * Створює головне VR-меню
+         * *** НОВОЕ: Очищает все игровые элементы (хотспоты, кнопки) ***
+         */
+        function clearAllGameElements() {
+            isTrainingActive = false;
+            if (sessionTimer) clearInterval(sessionTimer);
+            if (cursorUpdateInterval) clearInterval(cursorUpdateInterval);
+
+            while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
+            while (pathIndicators.firstChild) { pathIndicators.removeChild(pathIndicators.firstChild); }
+            while (inGameControlsContainer.firstChild) { inGameControlsContainer.removeChild(inGameControlsContainer.firstChild); }
+        }
+
+        /**
+         * *** НОВОЕ: Создает игровые кнопки (Выход / След. уровень) ***
+         */
+        function createInGameControls() {
+            clearAllGameElements(); // Очищаем на всякий случай
+
+            // Кнопка Выхода (красная, слева)
+            const exitBtn = document.createElement('a-entity');
+            exitBtn.setAttribute('position', '-2 1.6 -2'); // Слева и чуть ближе
+            
+            const exitSphere = document.createElement('a-sphere');
+            exitSphere.setAttribute('radius', '0.2');
+            exitSphere.setAttribute('color', '#F44336'); // Красный
+            exitSphere.setAttribute('class', 'game-control-button');
+            
+            const exitText = document.createElement('a-text');
+            exitText.setAttribute('value', 'Exit');
+            exitText.setAttribute('position', '0 0.3 0');
+            exitText.setAttribute('align', 'center');
+            exitText.setAttribute('width', '2');
+
+            exitSphere.addEventListener('click', () => {
+                clearAllGameElements();
+                createMainMenu(); // Возвращаемся в главное меню
+            });
+            
+            exitBtn.appendChild(exitSphere);
+            exitBtn.appendChild(exitText);
+            inGameControlsContainer.appendChild(exitBtn);
+
+            // Кнопка "Следующий уровень" (зеленая, справа)
+            const nextBtn = document.createElement('a-entity');
+            nextBtn.setAttribute('position', '2 1.6 -2'); // Справа и чуть ближе
+
+            const nextSphere = document.createElement('a-sphere');
+            nextSphere.setAttribute('radius', '0.2');
+            nextSphere.setAttribute('color', '#4CAF50'); // Зеленый
+            nextSphere.setAttribute('class', 'game-control-button');
+
+            const nextText = document.createElement('a-text');
+            nextText.setAttribute('value', 'Next Level');
+            nextText.setAttribute('position', '0 0.3 0');
+            nextText.setAttribute('align', 'center');
+            nextText.setAttribute('width', '2');
+
+            nextSphere.addEventListener('click', () => {
+                // "Следующий уровень" пока просто перезапускает текущий
+                clearAllGameElements();
+                initSession();
+            });
+
+            nextBtn.appendChild(nextSphere);
+            nextBtn.appendChild(nextText);
+            inGameControlsContainer.appendChild(nextBtn);
+        }
+
+        /**
+         * *** ИЗМЕНЕНО: Создает новое VR-меню ***
          */
         function createMainMenu() {
-            // Очищуємо контейнер, якщо там щось було
+            // Очищаем контейнер
             while (menuContainer.firstChild) {
                 menuContainer.removeChild(menuContainer.firstChild);
             }
             menuContainer.setAttribute('visible', true);
 
-            // Створюємо заголовок
+            // --- Заголовки ---
             const title = document.createElement('a-text');
             title.setAttribute('value', 'StayStable VR');
             title.setAttribute('position', '0 0.8 0');
@@ -450,125 +521,163 @@
             title.setAttribute('color', '#FFFFFF');
             menuContainer.appendChild(title);
 
-            // --- Кнопки вибору режиму ---
             const modeTitle = document.createElement('a-text');
             modeTitle.setAttribute('value', 'Select Mode:');
-            modeTitle.setAttribute('position', '0 0.5 0');
-            modeTitle.setAttribute('align', 'center');
+            modeTitle.setAttribute('position', '-1.1 0.5 0');
+            modeTitle.setAttribute('align', 'left');
             modeTitle.setAttribute('width', '3');
             modeTitle.setAttribute('color', '#DDDDDD');
             menuContainer.appendChild(modeTitle);
 
-            // Кнопка 1: Pursuit
-            const pursuitBtn = createMenuButton({
+            // --- Кнопки выбора режима (Сферы) ---
+            const pursuitBtn = createMenuButton_Sphere({
                 text: 'Pursuit',
-                position: '-0.8 0.2 0',
+                position: '-1 0.2 0',
                 mode: 'pursuit'
             });
             menuContainer.appendChild(pursuitBtn);
 
-            // Кнопка 2: Prediction
-            const predictionBtn = createMenuButton({
+            const predictionBtn = createMenuButton_Sphere({
                 text: 'Prediction',
                 position: '0 0.2 0',
                 mode: 'prediction'
             });
             menuContainer.appendChild(predictionBtn);
 
-            // Кнопка 3: Coordination
-            const coordBtn = createMenuButton({
+            const coordBtn = createMenuButton_Sphere({
                 text: 'Coordination',
-                position: '0.8 0.2 0',
+                position: '1 0.2 0',
                 mode: 'coordination'
             });
             menuContainer.appendChild(coordBtn);
 
-            // Встановлюємо "Prediction" як обраний за замовчуванням
-            selectMode(predictionBtn, 'prediction');
+            // Выбираем "Prediction" по умолчанию
+            selectMode(predictionBtn.querySelector('a-sphere'), 'prediction');
 
-            // --- Головні кнопки ---
-            
-            // Кнопка 4: Start Training
-            const startBtn = createMenuButton({
+            // --- Кнопки действий (2D Панели) ---
+            const startBtn = createMenuButton_Plane({
                 text: 'Start Training',
+                details: `Launches ${ACTIVE_CONFIG.name} mode.`,
                 position: '0 -0.4 0',
-                radius: 0.3,
-                color: '#4CAF50', // Зелений
+                width: 1.2,
+                color: '#4CAF50', // Зеленый
                 onClick: () => {
                     initSession();
                     initAudio();
                 }
             });
+            startBtn.id = 'start-button-details'; // Даем ID, чтобы обновлять текст
             menuContainer.appendChild(startBtn);
 
-            // Кнопка 5: Calibration
-            const calibBtn = createMenuButton({
+            const calibBtn = createMenuButton_Plane({
                 text: 'Calibration',
-                position: '-0.8 -0.4 0',
-                color: '#2196F3', // Синій
-                onClick: startCalibration
+                details: 'Recenter view and sensors.',
+                position: '-0.7 -0.8 0',
+                width: 1.0,
+                color: '#2196F3', // Синий
+                onClick: () => console.log("Calibration clicked")
             });
             menuContainer.appendChild(calibBtn);
 
-            // Кнопка 6: Recommendations
-            const recBtn = createMenuButton({
+            const recBtn = createMenuButton_Plane({
                 text: 'Recommendations',
-                position: '0.8 -0.4 0',
-                color: '#FF9800', // Помаранчевий
-                onClick: showRecommendations
+                details: 'View tips for this exercise.',
+                position: '0.7 -0.8 0',
+                width: 1.0,
+                color: '#FF9800', // Оранжевый
+                onClick: () => console.log("Recommendations clicked")
             });
             menuContainer.appendChild(recBtn);
         }
 
         /**
-         * Допоміжна функція для створення кнопки меню
-         * @param {object} config - { text, position, radius, color, mode, onClick }
+         * *** НОВОЕ: Создает 2D-кнопку (планшет) ***
          */
-        function createMenuButton(config) {
-            const { text, position, radius = 0.2, color = '#667eea', mode, onClick } = config;
+        function createMenuButton_Plane(config) {
+            const { text, details, position, width = 1, height = 0.3, color = '#667eea', onClick } = config;
+
+            const button = document.createElement('a-entity');
+            button.setAttribute('position', position);
+
+            // Фон (планшет)
+            const plane = document.createElement('a-plane');
+            plane.setAttribute('width', width);
+            plane.setAttribute('height', height);
+            plane.setAttribute('color', color);
+            plane.setAttribute('class', 'menu-button');
+            plane.dataset.originalColor = color;
+
+            // Основной текст
+            const label = document.createElement('a-text');
+            label.setAttribute('value', text);
+            label.setAttribute('position', '0 0 0.01'); // Чуть выше фона
+            label.setAttribute('align', 'center');
+            label.setAttribute('width', width * 2);
+            label.setAttribute('color', '#FFFFFF');
+
+            // Текст с деталями (скрыт по умолчанию)
+            const detailText = document.createElement('a-text');
+            detailText.setAttribute('value', details);
+            detailText.setAttribute('position', `0 -${height / 1.5} 0.01`);
+            detailText.setAttribute('align', 'center');
+            detailText.setAttribute('width', width * 1.5);
+            detailText.setAttribute('color', '#DDDDDD');
+            detailText.setAttribute('visible', 'false');
+            
+            // Сохраняем ссылку на текст с деталями
+            button.detailText = detailText;
+
+            // Показываем детали при наведении
+            plane.addEventListener('mouseenter', () => {
+                plane.setAttribute('color', '#FFFFFF'); // Подсветка
+                detailText.setAttribute('visible', 'true');
+            });
+            // Скрываем детали
+            plane.addEventListener('mouseleave', () => {
+                plane.setAttribute('color', color); // Возвращаем цвет
+                detailText.setAttribute('visible', 'false');
+            });
+
+            // Клик (с 2-секундной задержкой от курсора)
+            if (onClick) {
+                plane.addEventListener('click', onClick);
+            }
+
+            button.appendChild(plane);
+            button.appendChild(label);
+            button.appendChild(detailText);
+            return button;
+        }
+
+        /**
+         * *** НОВОЕ: Создает кнопку-сферу (для выбора режима) ***
+         */
+        function createMenuButton_Sphere(config) {
+            const { text, position, radius = 0.2, color = '#667eea', mode } = config;
             
             const button = document.createElement('a-entity');
             button.setAttribute('position', position);
 
-            // Сфера (кнопка)
             const sphere = document.createElement('a-entity');
             sphere.setAttribute('geometry', { primitive: 'sphere', radius: radius });
             sphere.setAttribute('material', { shader: 'standard', color: color, emissive: color, emissiveIntensity: 0.3 });
-            sphere.setAttribute('class', 'menu-button'); // Клас для raycaster
-            sphere.dataset.originalColor = color; // Зберігаємо колір
+            sphere.setAttribute('class', 'menu-button');
+            sphere.dataset.originalColor = color;
+            sphere.dataset.mode = mode; // Сохраняем режим
             
-            // Текст над сферою
             const label = document.createElement('a-text');
             label.setAttribute('value', text);
             label.setAttribute('position', `0 ${radius + 0.1} 0`);
             label.setAttribute('align', 'center');
             label.setAttribute('width', '2');
             
-            // Анімація при наведенні
-            sphere.addEventListener('mouseenter', () => {
-                sphere.setAttribute('animation__scale', {
-                    property: 'scale',
-                    to: '1.2 1.2 1.2',
-                    dur: 200
-                });
-            });
-            sphere.addEventListener('mouseleave', () => {
-                sphere.setAttribute('animation__scale', {
-                    property: 'scale',
-                    to: '1 1 1',
-                    dur: 200
-                });
-            });
+            sphere.addEventListener('mouseenter', () => sphere.setAttribute('scale', '1.2 1.2 1.2'));
+            sphere.addEventListener('mouseleave', () => sphere.setAttribute('scale', '1 1 1'));
 
-            // Логіка кліку
-            if (onClick) {
-                sphere.addEventListener('click', onClick);
-            } else if (mode) {
-                // Це кнопка вибору режиму
-                sphere.addEventListener('click', () => {
-                    selectMode(sphere, mode);
-                });
-            }
+            // Клик выбирает режим
+            sphere.addEventListener('click', () => {
+                selectMode(sphere, mode);
+            });
             
             button.appendChild(sphere);
             button.appendChild(label);
@@ -576,57 +685,47 @@
         }
 
         /**
-         * Вибір режиму тренування
+         * *** ИЗМЕНЕНО: Обновляет текст кнопки "Start" ***
          */
         function selectMode(clickedButton, mode) {
-            // "Знімаємо виділення" з попередньої кнопки
+            // "Снимаем выделение" с предыдущей кнопки
             if (selectedModeButton) {
                 selectedModeButton.setAttribute('material', { 
                     color: selectedModeButton.dataset.originalColor,
-                    emissive: selectedModeButton.dataset.originalColor
+                    emissive: selectedModeButton.dataset.originalColor,
+                    emissiveIntensity: 0.3
                 });
             }
             
-            // "Виділяємо" нову кнопку
+            // "Выделяем" новую кнопку
             clickedButton.setAttribute('material', { 
-                color: '#FFFFFF', // Білий
-                emissive: '#FFFFFF'
+                color: '#FFFFFF', // Белый
+                emissive: '#FFFFFF',
+                emissiveIntensity: 0.8
             });
             
-            // Зберігаємо вибір
+            // Сохраняем выбор
             selectedModeButton = clickedButton;
             ACTIVE_CONFIG = CONFIG[mode];
-            console.log("VR Mode selected:", mode);
+            
+            // Обновляем текст с деталями на кнопке "Start"
+            const startButton = document.getElementById('start-button-details');
+            if (startButton && startButton.detailText) {
+                startButton.detailText.setAttribute('value', `Launches ${ACTIVE_CONFIG.name} mode.`);
+            }
         }
 
         /**
-         * Ховає головне меню
+         * Скрывает главное меню
          */
         function hideMenu() {
             menuContainer.setAttribute('visible', 'false');
         }
-
-        /**
-         * (Заглушка) Починає калібрування
-         */
-        function startCalibration() {
-            console.log("Calibration started...");
-            // Тут може бути логіка для калібрування
-        }
-
-        /**
-         * (Заглушка) Показує рекомендації
-         */
-        function showRecommendations() {
-            console.log("Showing recommendations...");
-            // Тут може бути логіка для показу рекомендацій
-        }
-
+        
 
         // Event listeners
         window.addEventListener('resize', checkOrientation);
         window.addEventListener('orientationchange', checkOrientation);
-        // *** Старі слухачі (trainingModeEl, startTrainingBtn) видалено ***
         
         scene.addEventListener('enter-vr', () => {
             isVRMode = true;
@@ -642,7 +741,7 @@
         
         scene.addEventListener('loaded', () => {
             checkOrientation();
-            // *** ВИКЛИКАЄМО СТВОРЕННЯ VR-МЕНЮ ЗАМІСТЬ 2D UI ***
+            // *** ВЫЗЫВАЕМ СОЗДАНИЕ VR-МЕНЮ ***
             createMainMenu();
         });
     </script>
