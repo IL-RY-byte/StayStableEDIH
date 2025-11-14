@@ -125,6 +125,7 @@
         
         let ACTIVE_CONFIG = CONFIG.prediction; // Начинаем с режима "Prediction"
         let selectedModeButton = null; // Хранит выбранную кнопку режима
+        let confirmButton = null; // *** НОВОЕ: Хранит кнопку "Подтвердить" ***
         
         // Learning data (без изменений)
         const LEARNING_DATA = {
@@ -156,7 +157,7 @@
         const hotspotsContainer = document.querySelector('#hotspots');
         const pathIndicators = document.querySelector('#path-indicators');
         const menuContainer = document.getElementById('menu-container');
-        const inGameControlsContainer = document.getElementById('in-game-controls-container'); // *** НОВЫЙ ***
+        const inGameControlsContainer = document.getElementById('in-game-controls-container');
         const pointMessage = document.querySelector('.point-message');
         const orientationMessage = document.getElementById('orientation-message');
         const outOfBoundsMessage = document.querySelector('.out-of-bounds-message');
@@ -230,7 +231,7 @@
         }
 
         /**
-         * *** ИЗМЕНЕНО: Добавляет игровые кнопки ***
+         * Запускает сессию
          */
         function initSession() {
             // Скрываем меню
@@ -434,7 +435,7 @@
         // *** НОВЫЕ И ИЗМЕНЕННЫЕ ФУНКЦИИ ДЛЯ VR-МЕНЮ ***
 
         /**
-         * *** НОВОЕ: Очищает все игровые элементы (хотспоты, кнопки) ***
+         * Очищает все игровые элементы
          */
         function clearAllGameElements() {
             isTrainingActive = false;
@@ -447,7 +448,7 @@
         }
 
         /**
-         * *** НОВОЕ: Создает игровые кнопки (Выход / След. уровень) ***
+         * Создает игровые кнопки (Выход / След. уровень)
          */
         function createInGameControls() {
             clearAllGameElements(); // Очищаем на всякий случай
@@ -459,7 +460,7 @@
             const exitSphere = document.createElement('a-sphere');
             exitSphere.setAttribute('radius', '0.2');
             exitSphere.setAttribute('color', '#F44336'); // Красный
-            exitSphere.setAttribute('class', 'game-control-button');
+            exitSphere.setAttribute('class', 'game-control-button'); // Новый класс
             
             const exitText = document.createElement('a-text');
             exitText.setAttribute('value', 'Exit');
@@ -483,7 +484,7 @@
             const nextSphere = document.createElement('a-sphere');
             nextSphere.setAttribute('radius', '0.2');
             nextSphere.setAttribute('color', '#4CAF50'); // Зеленый
-            nextSphere.setAttribute('class', 'game-control-button');
+            nextSphere.setAttribute('class', 'game-control-button'); // Новый класс
 
             const nextText = document.createElement('a-text');
             nextText.setAttribute('value', 'Next Level');
@@ -511,6 +512,14 @@
                 menuContainer.removeChild(menuContainer.firstChild);
             }
             menuContainer.setAttribute('visible', true);
+
+            // *** НОВОЕ: Уничтожаем кнопку "Confirm", если она осталась ***
+            if (confirmButton) {
+                if (confirmButton.parentNode) {
+                    confirmButton.parentNode.removeChild(confirmButton);
+                }
+                confirmButton = null;
+            }
 
             // --- Заголовки ---
             const title = document.createElement('a-text');
@@ -555,24 +564,13 @@
             selectMode(predictionBtn.querySelector('a-sphere'), 'prediction');
 
             // --- Кнопки действий (2D Панели) ---
-            const startBtn = createMenuButton_Plane({
-                text: 'Start Training',
-                details: `Launches ${ACTIVE_CONFIG.name} mode.`,
-                position: '0 -0.4 0',
-                width: 1.2,
-                color: '#4CAF50', // Зеленый
-                onClick: () => {
-                    initSession();
-                    initAudio();
-                }
-            });
-            startBtn.id = 'start-button-details'; // Даем ID, чтобы обновлять текст
-            menuContainer.appendChild(startBtn);
+            // *** Кнопка "Start" УДАЛЕНА ***
 
+            // *** ИЗМЕНЕНЫ ПОЗИЦИИ ***
             const calibBtn = createMenuButton_Plane({
                 text: 'Calibration',
                 details: 'Recenter view and sensors.',
-                position: '-0.7 -0.8 0',
+                position: '-0.6 -0.4 0', // Сдвинуто
                 width: 1.0,
                 color: '#2196F3', // Синий
                 onClick: () => console.log("Calibration clicked")
@@ -582,7 +580,7 @@
             const recBtn = createMenuButton_Plane({
                 text: 'Recommendations',
                 details: 'View tips for this exercise.',
-                position: '0.7 -0.8 0',
+                position: '0.6 -0.4 0', // Сдвинуто
                 width: 1.0,
                 color: '#FF9800', // Оранжевый
                 onClick: () => console.log("Recommendations clicked")
@@ -591,7 +589,7 @@
         }
 
         /**
-         * *** НОВОЕ: Создает 2D-кнопку (планшет) ***
+         * Создает 2D-кнопку (планшет)
          */
         function createMenuButton_Plane(config) {
             const { text, details, position, width = 1, height = 0.3, color = '#667eea', onClick } = config;
@@ -599,7 +597,6 @@
             const button = document.createElement('a-entity');
             button.setAttribute('position', position);
 
-            // Фон (планшет)
             const plane = document.createElement('a-plane');
             plane.setAttribute('width', width);
             plane.setAttribute('height', height);
@@ -607,15 +604,13 @@
             plane.setAttribute('class', 'menu-button');
             plane.dataset.originalColor = color;
 
-            // Основной текст
             const label = document.createElement('a-text');
             label.setAttribute('value', text);
-            label.setAttribute('position', '0 0 0.01'); // Чуть выше фона
+            label.setAttribute('position', '0 0 0.01');
             label.setAttribute('align', 'center');
             label.setAttribute('width', width * 2);
             label.setAttribute('color', '#FFFFFF');
 
-            // Текст с деталями (скрыт по умолчанию)
             const detailText = document.createElement('a-text');
             detailText.setAttribute('value', details);
             detailText.setAttribute('position', `0 -${height / 1.5} 0.01`);
@@ -624,21 +619,17 @@
             detailText.setAttribute('color', '#DDDDDD');
             detailText.setAttribute('visible', 'false');
             
-            // Сохраняем ссылку на текст с деталями
             button.detailText = detailText;
 
-            // Показываем детали при наведении
             plane.addEventListener('mouseenter', () => {
-                plane.setAttribute('color', '#FFFFFF'); // Подсветка
+                plane.setAttribute('color', '#FFFFFF');
                 detailText.setAttribute('visible', 'true');
             });
-            // Скрываем детали
             plane.addEventListener('mouseleave', () => {
-                plane.setAttribute('color', color); // Возвращаем цвет
+                plane.setAttribute('color', color);
                 detailText.setAttribute('visible', 'false');
             });
 
-            // Клик (с 2-секундной задержкой от курсора)
             if (onClick) {
                 plane.addEventListener('click', onClick);
             }
@@ -650,7 +641,7 @@
         }
 
         /**
-         * *** НОВОЕ: Создает кнопку-сферу (для выбора режима) ***
+         * Создает кнопку-сферу (для выбора режима)
          */
         function createMenuButton_Sphere(config) {
             const { text, position, radius = 0.2, color = '#667eea', mode } = config;
@@ -663,7 +654,7 @@
             sphere.setAttribute('material', { shader: 'standard', color: color, emissive: color, emissiveIntensity: 0.3 });
             sphere.setAttribute('class', 'menu-button');
             sphere.dataset.originalColor = color;
-            sphere.dataset.mode = mode; // Сохраняем режим
+            sphere.dataset.mode = mode;
             
             const label = document.createElement('a-text');
             label.setAttribute('value', text);
@@ -674,7 +665,6 @@
             sphere.addEventListener('mouseenter', () => sphere.setAttribute('scale', '1.2 1.2 1.2'));
             sphere.addEventListener('mouseleave', () => sphere.setAttribute('scale', '1 1 1'));
 
-            // Клик выбирает режим
             sphere.addEventListener('click', () => {
                 selectMode(sphere, mode);
             });
@@ -685,7 +675,7 @@
         }
 
         /**
-         * *** ИЗМЕНЕНО: Обновляет текст кнопки "Start" ***
+         * *** ИЗМЕНЕНО: Создает кнопку "Confirm" ***
          */
         function selectMode(clickedButton, mode) {
             // "Снимаем выделение" с предыдущей кнопки
@@ -708,18 +698,67 @@
             selectedModeButton = clickedButton;
             ACTIVE_CONFIG = CONFIG[mode];
             
-            // Обновляем текст с деталями на кнопке "Start"
-            const startButton = document.getElementById('start-button-details');
-            if (startButton && startButton.detailText) {
-                startButton.detailText.setAttribute('value', `Launches ${ACTIVE_CONFIG.name} mode.`);
+            // *** НОВОЕ: Создаем кнопку "Confirm" ***
+
+            // 1. Удаляем старую кнопку "Confirm", если она есть
+            if (confirmButton) {
+                confirmButton.parentNode.removeChild(confirmButton);
+                confirmButton = null;
             }
+
+            // 2. Получаем позицию родительского <a-entity> кнопки режима
+            const parentEntity = clickedButton.parentNode;
+            const parentPosition = parentEntity.getAttribute('position');
+            const newPos = `${parentPosition.x} -0.2 ${parentPosition.z}`; // Позиция под сферой
+
+            // 3. Создаем новую кнопку "Confirm"
+            confirmButton = document.createElement('a-entity');
+            confirmButton.setAttribute('position', newPos);
+
+            const sphere = document.createElement('a-sphere');
+            sphere.setAttribute('radius', 0.1); // Маленький шарик
+            sphere.setAttribute('color', '#4CAF50'); // Зеленый
+            sphere.setAttribute('class', 'menu-button'); // Чтобы raycaster его видел
+            
+            // Пульсирующая анимация для привлечения внимания
+            sphere.setAttribute('animation__pulse', {
+                property: 'scale',
+                dir: 'alternate',
+                dur: 700,
+                from: '1 1 1',
+                to: '1.2 1.2 1.2',
+                loop: true
+            });
+
+            const text = document.createElement('a-text');
+            text.setAttribute('value', 'Confirm');
+            text.setAttribute('position', '0 0.15 0'); // Текст над шариком
+            text.setAttribute('align', 'center');
+            text.setAttribute('width', 2);
+
+            // Нажатие (через 2 сек) запускает игру
+            sphere.addEventListener('click', () => {
+                initSession();
+                initAudio();
+            });
+
+            confirmButton.appendChild(sphere);
+            confirmButton.appendChild(text);
+            menuContainer.appendChild(confirmButton);
         }
 
         /**
-         * Скрывает главное меню
+         * *** ИЗМЕНЕНО: Также очищает кнопку "Confirm" ***
          */
         function hideMenu() {
             menuContainer.setAttribute('visible', 'false');
+            // Очищаем кнопку "Confirm", когда игра начинается
+            if (confirmButton) {
+                if (confirmButton.parentNode) {
+                    confirmButton.parentNode.removeChild(confirmButton);
+                }
+                confirmButton = null;
+            }
         }
         
 
@@ -741,7 +780,7 @@
         
         scene.addEventListener('loaded', () => {
             checkOrientation();
-            // *** ВЫЗЫВАЕМ СОЗДАНИЕ VR-МЕНЮ ***
+            // ВЫЗЫВАЕМ СОЗДАНИЕ VR-МЕНЮ
             createMainMenu();
         });
     </script>
