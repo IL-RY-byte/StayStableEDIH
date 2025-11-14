@@ -663,13 +663,15 @@ function createHotspot() {
     let position;
     if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
         const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-        // Отримуємо позицію індикатора (з Z-відступом, напр. -4.6)
+        // Получаем позицию индикатора (с Z-отступом, напр. -4.6)
         position = predictivePattern[patternIndex]; 
         
-        // "Повертаємо" позицію хотспота, щоб він був ближче (напр. -4.5)
+        // "Возвращаем" позицию хотспота, чтобы он был ближе (напр. -4.5)
+        // Убедитесь, что это значение (+0.1) соответствует отступу в generatePredictivePattern
         position = {x: position.x, y: position.y, z: position.z + 0.1}; 
 
     } else {
+        // Fallback для режима "pursuit"
         const x = (Math.random() * 3) - 1.5;
         const y = (Math.random() * 2) - 0.5;
         const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
@@ -681,23 +683,21 @@ function createHotspot() {
     
     hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
     
-    // *** ЗМІНА 1: Змінюємо геометрію на 'icosahedron' ***
+    // Используем самую простую геометрию и материал для теста
     hotspot.setAttribute('geometry', {
-        primitive: 'icosahedron', // <-- ЗМІНЕНО зі 'sphere'
+        primitive: 'icosahedron', // Простой многогранник
         radius: radius
     });
     
-    // *** ЗМІНА 2: Спрощуємо матеріал до 'flat' ***
     hotspot.setAttribute('material', {
-        shader: 'flat', // <-- ЗМІНЕНО зі 'standard'
+        shader: 'flat', // Самый простой шейдер
         color: '#667eea'
-        // emissive-атрибути не потрібні для 'flat'
     });
     
     hotspot.setAttribute('class', 'hotspot');
 
     // ---------------------
-    // RING (VR-SAFE variant)
+    // RING (без изменений)
     // ---------------------
     const ring = document.createElement('a-entity');
     ring.setAttribute('geometry', {
@@ -716,7 +716,7 @@ function createHotspot() {
     hotspot.appendChild(ring);
 
     // ---------------------
-    // DATA
+    // DATA (без изменений)
     // ---------------------
     hotspot.dataset.focusStartTime = 0;
     hotspot.dataset.focusQuality = 0;
@@ -767,7 +767,8 @@ function createHotspot() {
         
         updateLearning(enhancedQuality);
         
-        this.setAttribute('animation', {
+        // ИСПРАВЛЕНИЕ: Даем анимации "имя", чтобы она не конфликтовала
+        this.setAttribute('animation__scale', {
             property: 'scale',
             dur: 500,
             to: '0 0 0',
@@ -794,21 +795,14 @@ function createHotspot() {
         }, 300);
     });
     
-    // Використовуємо надійну 'animation' (а не 'tick')
-    if (ACTIVE_CONFIG.predictiveMode) {
-        hotspot.setAttribute('animation', {
-            property: 'position',
-            dur: 5000 + Math.random() * 5000,
-            easing: 'linear',
-            loop: true,
-            to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}`
-        });
-    }
+    // *** ГЛАВНОЕ ИСПРАВЛЕНИЕ: ВСЯ АНИМАЦИЯ ДВИЖЕНИЯ УДАЛЕНА ***
+    // if (ACTIVE_CONFIG.predictiveMode) { ... }
     
     hotspotsContainer.appendChild(hotspot);
     activeHotspots.push(hotspot);
     
-    // 'tick' залишається видаленим, щоб уникнути конфлікту
+    // *** ГЛАВНОЕ ИСПРАВЛЕНИЕ: 'tick' УДАЛЕН ***
+    // hotspot.tick = ...
 }
         
         // Update learning model
