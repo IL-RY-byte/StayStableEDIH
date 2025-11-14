@@ -591,7 +591,10 @@
                 const angle = (i / patternLength) * Math.PI * 2;
                 const x = radius * Math.sin(angle * 2) * 0.7;
                 const y = radius * Math.sin(angle) * 0.3;
-                const z = -radius * 1.5;
+                
+                // *** ИСПРАВЛЕНИЕ 1: Добавляем небольшой отступ по Z ***
+                // Это отодвигает индикаторы немного "за" хотспоты, решая Z-fighting
+                const z = -radius * 1.5 - 0.05; 
                 
                 predictivePattern.push({ x, y, z });
             }
@@ -612,26 +615,36 @@
                     radiusOuter: 0.08
                 });
                 
+                // *** ИСПРАВЛЕНИЕ 2: Добавляем depthWrite: false ***
+                // Это помогает правильно рендерить прозрачность
                 indicator.setAttribute('material', {
                     color: '#667eea',
                     opacity: 0.3,
                     transparent: true,
-                    shader: 'flat'
+                    shader: 'flat',
+                    depthWrite: false 
                 });
                 
-                // --- ИСПРАВЛЕНО ---
                 indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
                 
                 if (index > 0) {
                     const prevPos = predictivePattern[index - 1];
                     const line = document.createElement('a-entity');
                     
-                    // --- ИСПРАВЛЕНО ---
                     line.setAttribute('line', {
                         start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`,
                         end: `${pos.x} ${pos.y} ${pos.z}`,
                         color: '#764ba2',
                         opacity: 0.2
+                    });
+
+                    // *** ИСПРАВЛЕНИЕ 2 (для линии): Тоже добавляем depthWrite: false ***
+                    line.setAttribute('material', {
+                        shader: 'flat',
+                        color: '#764ba2',
+                        opacity: 0.2,
+                        transparent: true,
+                        depthWrite: false
                     });
                     
                     pathIndicators.appendChild(line);
@@ -648,7 +661,13 @@
             let position;
             if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
                 const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-                position = predictivePattern[patternIndex];
+                // Получаем позицию. Z будет -4.55 из-за исправления
+                position = predictivePattern[patternIndex]; 
+                
+                // HACK: Мы хотим, чтобы хотспот был на Z = -4.5, а индикатор на Z = -4.55
+                // Поэтому мы "возвращаем" Z хотспота на -4.5
+                position = {x: position.x, y: position.y, z: position.z + 0.05};
+
             } else {
                 const x = (Math.random() * 3) - 1.5;
                 const y = (Math.random() * 2) - 0.5;
@@ -659,7 +678,6 @@
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const radius = isMobile ? 0.35 : 0.25;
             
-           // --- ИСПРАВЛЕНО ---
            hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
            hotspot.setAttribute('geometry', {
                 primitive: 'sphere',
@@ -688,6 +706,7 @@
                 opacity: 0.8,
                 transparent: true,
                 side: 'double'
+                // Здесь depthWrite не нужен, т.к. кольцо не должно "проваливаться" сквозь сферу
             });
             ring.setAttribute('visible', false);
             hotspot.appendChild(ring);
@@ -778,7 +797,6 @@
             });
             
             if (ACTIVE_CONFIG.predictiveMode) {
-                // --- ИСПРАВЛЕНО ---
                 hotspot.setAttribute('animation', {
                     property: 'position',
                     dur: 5000 + Math.random() * 5000,
@@ -824,8 +842,6 @@
             LEARNING_DATA.totalLearning = LEARNING_DATA.fastComponent + LEARNING_DATA.slowComponent;
             
             learningProgress = Math.min(100, (LEARNING_DATA.totalLearning / 200) * 100);
-            
-            // --- ИСПРАВЛЕНО ---
             progressFill.style.width = `${learningProgress}%`;
             
             updateLearningUI();
@@ -833,13 +849,10 @@
         
         // Update UI with learning metrics
         function updateLearningUI() {
-            // --- ИСПРАВЛЕНО ---
             focusQualityEl.textContent = `${Math.round(LEARNING_DATA.focusQuality)}%`;
             
             const learningRate = LEARNING_DATA.trials > 1 ? 
                 Math.round(LEARNING_DATA.predictionEfficiency) : 0;
-            
-            // --- ИСПРАВЛЕНО ---
             learningRateEl.textContent = `${learningRate}%`;
         }
         
@@ -856,7 +869,6 @@
             } else if (LEARNING_DATA.targetsHit === 100) {
                 message = "Excellent progress! Long-term motor learning pathways forming.";
             } else {
-                // --- ИСПРАВЛЕНО ---
                 message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`;
             }
             
@@ -877,8 +889,6 @@
             const elapsedSec = Math.floor((Date.now() - LEARNING_DATA.sessionStartTime) / 1000);
             const minutes = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
             const seconds = (elapsedSec % 60).toString().padStart(2, '0');
-            
-            // --- ИСПРАВЛЕНО ---
             sessionTimeEl.textContent = `${minutes}:${seconds}`;
         }
         
@@ -901,10 +911,10 @@
         // Check if gaze is within bounds
         function checkOutOfBounds() {
             const camera = document.querySelector('a-camera');
-            if (!camera) return; // Добавлена проверка
+            if (!camera) return; 
             
             const cameraRotation = camera.getAttribute('rotation');
-            if (!cameraRotation) return; // Добавлена проверка
+            if (!cameraRotation) return; 
             
             const yaw = cameraRotation.y;
             const pitch = cameraRotation.x;
@@ -934,7 +944,6 @@
             
             const instructionsEl = document.querySelector('.instructions');
             
-            // --- ИСПРАВЛЕНО (HTML вставлен в обратные кавычки) ---
             switch(mode) {
                 case 'pursuit':
                     instructionsEl.innerHTML = `
