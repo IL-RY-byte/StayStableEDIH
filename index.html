@@ -291,7 +291,7 @@
         🥽 Enable VR Stereo Mode
     </button>
 
-    <a-scene raycaster="objects: .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="logarithmicDepthBuffer: true; antialias: true;">
+    <a-scene raycaster="objects: .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
         <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true">
             <a-entity
             raycaster="objects: .hotspot; far: 20"
@@ -592,8 +592,7 @@
                 const x = radius * Math.sin(angle * 2) * 0.7;
                 const y = radius * Math.sin(angle) * 0.3;
                 
-                // *** ИСПРАВЛЕНИЕ 1: Добавляем небольшой отступ по Z ***
-                // Это отодвигает индикаторы немного "за" хотспоты, решая Z-fighting
+                // Это небольшой отступ по Z, который теперь будет работать
                 const z = -radius * 1.5 - 0.05; 
                 
                 predictivePattern.push({ x, y, z });
@@ -615,8 +614,7 @@
                     radiusOuter: 0.08
                 });
                 
-                // *** ИСПРАВЛЕНИЕ 2: Добавляем depthWrite: false ***
-                // Это помогает правильно рендерить прозрачность
+                // depthWrite: false помогает рендерить прозрачность
                 indicator.setAttribute('material', {
                     color: '#667eea',
                     opacity: 0.3,
@@ -638,7 +636,7 @@
                         opacity: 0.2
                     });
 
-                    // *** ИСПРАВЛЕНИЕ 2 (для линии): Тоже добавляем depthWrite: false ***
+                    // Тоже добавляем depthWrite: false для линии
                     line.setAttribute('material', {
                         shader: 'flat',
                         color: '#764ba2',
@@ -661,11 +659,10 @@
             let position;
             if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
                 const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-                // Получаем позицию. Z будет -4.55 из-за исправления
+                // Позиция индикатора (на Z = -4.55)
                 position = predictivePattern[patternIndex]; 
                 
-                // HACK: Мы хотим, чтобы хотспот был на Z = -4.5, а индикатор на Z = -4.55
-                // Поэтому мы "возвращаем" Z хотспота на -4.5
+                // Возвращаем хотспот на Z = -4.5, чтобы он был "ближе"
                 position = {x: position.x, y: position.y, z: position.z + 0.05};
 
             } else {
@@ -699,14 +696,13 @@
                 primitive: 'ring',
                 radiusInner: radius * 1.33,
                 radiusOuter: radius * 1.67,
-                thetaLength: 0            // важно!
+                thetaLength: 0
             });
             ring.setAttribute('material', {
                 color: '#FFFFFF',
                 opacity: 0.8,
                 transparent: true,
                 side: 'double'
-                // Здесь depthWrite не нужен, т.к. кольцо не должно "проваливаться" сквозь сферу
             });
             ring.setAttribute('visible', false);
             hotspot.appendChild(ring);
@@ -725,7 +721,6 @@
                 hotspot.dataset.focusStartTime = Date.now();
                 ring.setAttribute('visible', true);
 
-                // безопасная анимация
                 ring.setAttribute('animation__fill', {
                     property: 'geometry.thetaLength',
                     from: 0,
@@ -737,18 +732,13 @@
 
             hotspot.addEventListener('mouseleave', function() {
                 ring.setAttribute('visible', false);
-
-                // убрать анимацию
                 ring.removeAttribute('animation__fill');
-
-                // сброс угла, без пересоздания всей geometry (не ломает VR)
                 ring.setAttribute('geometry', {
                     primitive: 'ring',
                     radiusInner: radius * 1.33,
                     radiusOuter: radius * 1.67,
                     thetaLength: 0
                 });
-
                 hotspot.dataset.focusQuality = 0;
             });
 
