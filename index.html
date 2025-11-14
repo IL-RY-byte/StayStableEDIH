@@ -657,17 +657,19 @@ function visualizePredictivePattern() {
 }
 
        // Create a new hotspot/target
+// Create a new hotspot/target
 function createHotspot() {
     const hotspot = document.createElement('a-entity');
     
     let position;
     if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
         const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-        // Позиція індикатора (на Z = -4.6 або -5.0, залежно від вашої версії)
+        // Получаем позицию индикатора (с Z-отступом, напр. -4.6)
         position = predictivePattern[patternIndex]; 
         
-        // Повертаємо хотспот, щоб він був "ближче" (на 0.1 або 0.5)
-        position = {x: position.x, y: position.y, z: position.z + 0.1}; // (Використовуйте +0.1, якщо Z -4.6, або +0.5, якщо Z -5.0)
+        // "Возвращаем" позицию хотспота, чтобы он был ближе (напр. -4.5)
+        // Убедитесь, что это значение (+0.1) соответствует отступу в generatePredictivePattern
+        position = {x: position.x, y: position.y, z: position.z + 0.1}; 
 
     } else {
         const x = (Math.random() * 3) - 1.5;
@@ -716,7 +718,7 @@ function createHotspot() {
     // ---------------------
     hotspot.dataset.focusStartTime = 0;
     hotspot.dataset.focusQuality = 0;
-    hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1;
+    hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1; // Это можно удалить, если 'tick' не используется
 
     // ---------------------
     // EVENTS
@@ -790,27 +792,23 @@ function createHotspot() {
         }, 300);
     });
     
-    // *** КОНФЛІКТНИЙ БЛОК ВИДАЛЕНО ***
-    // if (ACTIVE_CONFIG.predictiveMode) {
-    //     hotspot.setAttribute('animation', { ... });
-    // }
+    // *** ВОЗВРАЩАЕМ АНИМАЦИЮ ***
+    if (ACTIVE_CONFIG.predictiveMode) {
+        // Эта анимация будет двигать сферу по точкам пути
+        hotspot.setAttribute('animation', {
+            property: 'position',
+            dur: 5000 + Math.random() * 5000,
+            easing: 'linear',
+            loop: true,
+            to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}`
+        });
+    }
     
     hotspotsContainer.appendChild(hotspot);
     activeHotspots.push(hotspot);
     
-    // *** ЦЯ ФУНКЦІЯ ТЕПЕР БУДЕ ПРАЦЮВАТИ КОРЕКТНО ***
-    hotspot.tick = (time, timeDelta) => {
-        if (!ACTIVE_CONFIG.predictiveMode) return;
-        
-        const currentPos = hotspot.getAttribute('position');
-        const speed = ACTIVE_CONFIG.moveSpeed;
-        const dir = parseInt(hotspot.dataset.direction);
-        
-        currentPos.x += Math.sin(time / 1000) * speed * dir;
-        currentPos.y += Math.cos(time / 2000) * speed * dir;
-        
-        hotspot.setAttribute('position', currentPos);
-    };
+    // *** КОНФЛИКТНЫЙ БЛОК 'tick' УДАЛЕН ***
+    // hotspot.tick = (time, timeDelta) => { ... }
 }
         
         // Update learning model
