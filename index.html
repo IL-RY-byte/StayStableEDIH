@@ -674,8 +674,8 @@
             return button;
         }
 
-        /**
-         * *** ИЗМЕНЕНО: Создает кнопку "Confirm" ***
+      /**
+         * *** ИСПРАВЛЕНО: Теперь корректно создает кнопку "Confirm" ***
          */
         function selectMode(clickedButton, mode) {
             // "Снимаем выделение" с предыдущей кнопки
@@ -698,11 +698,13 @@
             selectedModeButton = clickedButton;
             ACTIVE_CONFIG = CONFIG[mode];
             
-            // *** НОВОЕ: Создаем кнопку "Confirm" ***
+            // --- Создаем кнопку "Confirm" ---
 
             // 1. Удаляем старую кнопку "Confirm", если она есть
             if (confirmButton) {
-                confirmButton.parentNode.removeChild(confirmButton);
+                if (confirmButton.parentNode) {
+                    confirmButton.parentNode.removeChild(confirmButton);
+                }
                 confirmButton = null;
             }
 
@@ -711,17 +713,17 @@
             const parentPosition = parentEntity.getAttribute('position');
             const newPos = `${parentPosition.x} -0.2 ${parentPosition.z}`; // Позиция под сферой
 
-            // 3. Создаем новую кнопку "Confirm"
+            // 3. Создаем ОДНУ сущность, которая и есть кнопка "Confirm"
             confirmButton = document.createElement('a-entity');
             confirmButton.setAttribute('position', newPos);
-
-            const sphere = document.createElement('a-sphere');
-            sphere.setAttribute('radius', 0.1); // Маленький шарик
-            sphere.setAttribute('color', '#4CAF50'); // Зеленый
-            sphere.setAttribute('class', 'menu-button'); // Чтобы raycaster его видел
             
-            // Пульсирующая анимация для привлечения внимания
-            sphere.setAttribute('animation__pulse', {
+            // 4. Добавляем геометрию и класс ПРЯМО к этой сущности
+            confirmButton.setAttribute('geometry', { primitive: 'sphere', radius: 0.1 });
+            confirmButton.setAttribute('material', { color: '#4CAF50' }); // Зеленый
+            confirmButton.setAttribute('class', 'menu-button'); // <-- Класс, который "видит" курсор
+
+            // 5. Добавляем анимацию
+            confirmButton.setAttribute('animation__pulse', {
                 property: 'scale',
                 dir: 'alternate',
                 dur: 700,
@@ -730,26 +732,23 @@
                 loop: true
             });
 
+            // 6. Добавляем текст
             const text = document.createElement('a-text');
             text.setAttribute('value', 'Confirm');
             text.setAttribute('position', '0 0.15 0'); // Текст над шариком
             text.setAttribute('align', 'center');
             text.setAttribute('width', 2);
 
-            // Нажатие (через 2 сек) запускает игру
-            sphere.addEventListener('click', () => {
+            // 7. Добавляем слушатель клика ПРЯМО к этой сущности
+            confirmButton.addEventListener('click', () => {
                 initSession();
                 initAudio();
             });
 
-            confirmButton.appendChild(sphere);
+            // 8. Добавляем элементы в сцену
             confirmButton.appendChild(text);
             menuContainer.appendChild(confirmButton);
         }
-
-        /**
-         * *** ИЗМЕНЕНО: Также очищает кнопку "Confirm" ***
-         */
         function hideMenu() {
             menuContainer.setAttribute('visible', 'false');
             // Очищаем кнопку "Confirm", когда игра начинается
