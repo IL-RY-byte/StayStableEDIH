@@ -1,394 +1,994 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>StayStable – Cerebellar Rehab VR</title>
-<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.min.js"></script>
-<style>
-    body{margin:0;overflow:hidden;background:#111;font-family:Arial,sans-serif;}
-    .ui{position:fixed;z-index:999;padding:12px;border-radius:8px;color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);}
-    .instructions{top:15px;left:15px;background:rgba(102,126,234,.9);max-width:340px;}
-    .data-panel{top:15px;right:15px;background:rgba(118,75,162,.9);min-width:180px;}
-    .session-stats{bottom:15px;right:15px;background:rgba(118,75,162,.9);}
-    .mode-selector{bottom:15px;left:15px;background:rgba(102,126,234,.9);}
-    .vr-stereo-mode{bottom:100px;left:50%;transform:translateX(-50%);background:rgba(102,126,234,.9);cursor:pointer;}
-    .progress-bar{bottom:70px;left:50%;transform:translateX(-50%);width:300px;height:18px;background:rgba(255,255,255,.2);border-radius:9px;overflow:hidden;}
-    .progress-fill{height:100%;width:0;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .4s;}
-    .point-message{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);background:rgba(102,126,234,.95);padding:12px;border-radius:8px;display:none;}
-    .out-of-bounds-message{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,0,0,.8);color:#fff;padding:20px;border-radius:10px;display:none;font-size:1.4rem;}
-    .crosshair{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:999;}
-    .crosshair::before,.crosshair::after{content:'';position:absolute;background:#fff;box-shadow:0 0 3px rgba(0,0,0,.5);}
-    .crosshair::before{width:2px;height:20px;left:50%;top:50%;transform:translate(-50%,-50%);}
-    .crosshair::after{width:20px;height:2px;left:50%;top:50%;transform:translate(-50%,-50%);}
-    body.vr-mode .ui{display:none !important;}
-    body.vr-mode .crosshair{display:block !important;}
-    #nod-prompt{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.85);color:#fff;padding:30px;border-radius:12px;text-align:center;font-size:1.3rem;z-index:1000;display:none;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StayStable - Cerebellar Rehabilitation VR</title>
+    <!-- A-Frame for VR functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+    <!-- Tone.js for audio feedback -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .instructions {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 999;
+            max-width: 320px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        .crosshair::before,
+        .crosshair::after {
+            content: '';
+            position: absolute;
+            background: white;
+            box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .crosshair::before {
+            width: 2px;
+            height: 20px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .crosshair::after {
+            width: 20px;
+            height: 2px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .data-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(118, 75, 162, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 999;
+            min-width: 200px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .point-message {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(102, 126, 234, 0.95);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 999;
+            text-align: center;
+            opacity: 1;
+            transition: opacity 0.5s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .point-message.fade {
+            opacity: 0;
+        }
+
+        #orientation-message {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .field-of-view {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 110vw;
+            height: 90vh;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 998;
+        }
+
+        .out-of-bounds-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            z-index: 1001;
+            display: none;
+        }
+        
+        .progress-bar {
+            position: fixed;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 999;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s;
+        }
+        
+        .session-stats {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(118, 75, 162, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 999;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .mode-selector {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            z-index: 999;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        select, button {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 15px;
+            border-radius: 5px;
+            margin: 5px 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        select:focus, button:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+        }
+        
+        select:hover, button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .hotspot {
+            cursor: pointer;
+        }
+        
+        /* VR Stereo Mode Styles */
+        .vr-stereo-mode {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            z-index: 999;
+            font-size: 18px;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .vr-stereo-mode:hover {
+            background: rgba(118, 75, 162, 0.9);
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.5);
+        }
+        
+        /* Stereo view container */
+        .a-canvas.a-stereo {
+            position: absolute !important;
+        }
+        
+        /* Hide UI elements in VR mode */
+        body.vr-mode .instructions,
+        body.vr-mode .data-panel,
+        body.vr-mode .session-stats,
+        body.vr-mode .mode-selector,
+        body.vr-mode .vr-stereo-mode,
+        body.vr-mode .progress-bar {
+            display: none !important;
+        }
+        
+        body.vr-mode .crosshair {
+            display: block !important;
+        }
+    </style>
 </head>
 <body>
+    <div id="orientation-message" style="display: none;">
+        Please rotate your device to landscape mode
+    </div>
 
-<div id="orientation-message" style="display:none;">Please rotate to landscape</div>
+    <div class="instructions">
+        <h3>Cerebellar Rehabilitation Exercise</h3>
+        <p>Focus on dots and follow predictive patterns to train your cerebellum.</p>
+        <p>Each successful focus improves motor learning pathways.</p>
+    </div>
 
-<div class="ui instructions"><h3>Cerebellar Rehabilitation</h3><p>Focus on the glowing spheres.</p></div>
-<div class="crosshair"></div>
+    <div class="crosshair"></div>
+    <div class="field-of-view"></div>
+    
+    <div class="data-panel">
+        <div>Score: <span id="score">0</span></div>
+        <div>Focus quality: <span id="focus-quality">0%</span></div>
+        <div>Prediction: <span id="learning-rate">0%</span></div>
+    </div>
 
-<div class="ui data-panel">
-    <div>Score: <span id="score">0</span></div>
-    <div>Focus: <span id="focus-quality">0%</span></div>
-    <div>Prediction: <span id="learning-rate">0%</span></div>
-</div>
+    <div class="progress-bar">
+        <div class="progress-fill"></div>
+    </div>
 
-<div class="progress-bar"><div class="progress-fill"></div></div>
-<div class="point-message"></div>
-<div class="out-of-bounds-message">Return to centre</div>
+    <div class="point-message" style="display: none;"></div>
+    <div class="out-of-bounds-message">Return to center position</div>
+    
+    <div class="session-stats">
+        <div>Session time: <span id="session-time">00:00</span></div>
+        <div>Targets hit: <span id="targets-hit">0</span></div>
+    </div>
+    
+    <div class="mode-selector">
+        <select id="training-mode">
+            <option value="pursuit">Pursuit Learning</option>
+            <option value="prediction">Prediction Training</option>
+            <option value="coordination">Coordination Exercise</option>
+        </select>
+        <button id="start-training">Start Training</button>
+    </div>
+    
+    <button class="vr-stereo-mode" id="vr-stereo-toggle">
+        🥽 Enable VR Stereo Mode
+    </button>
 
-<div class="ui session-stats">
-    <div>Time: <span id="session-time">00:00</span></div>
-    <div>Hits: <span id="targets-hit">0</span></div>
-</div>
+    <a-scene raycaster="objects: .hotspot; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true">
+        <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true">
+            <a-entity
+                raycaster="objects: .hotspot; far: 20"
+                position="0 0 -1"
+                geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
+                material="color: white; shader: flat"
+                cursor="fuse: true; fuseTimeout: 1000"
+                visible="false">
+            </a-entity>
+        </a-camera>
 
-<div class="ui mode-selector">
-    <select id="training-mode">
-        <option value="pursuit">Pursuit</option>
-        <option value="prediction">Prediction</option>
-        <option value="coordination">Coordination</option>
-    </select>
-    <button id="start-training">Start</button>
-</div>
+        <a-sky color="#f0e6ff"></a-sky>
+        <a-entity id="hotspots"></a-entity>
+        <a-entity id="path-indicators"></a-entity>
+    </a-scene>
 
-<button class="ui vr-stereo-mode" id="vr-stereo-toggle">Enable VR Stereo Mode</button>
-
-<div id="nod-prompt">Nod <strong>down → up</strong> to start</div>
-
-<a-scene raycaster="objects: .hotspot; far: 30" vr-mode-ui="enabled: true"
-         device-orientation-permission-ui="enabled: true" background="color:#f0e6ff">
-    <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true"></a-camera>
-    <a-entity id="hotspots"></a-entity>
-    <a-entity id="trails"></a-entity>
-</a-scene>
-
-<script>
-/* ---------- CONFIG ---------- */
-const CONFIG = {
-    pursuit:    {num:5, spawnDelay:2000, minDist:3, maxDist:6, predictive:false, fuse:1000, speed:0},
-    prediction: {num:4, spawnDelay:3000, minDist:2, maxDist:5, predictive:true,  fuse:1500, speed:0.025,
-                 rule:"Targets move **clockwise** on a circle (radius 3 m)."},
-    coordination:{num:6, spawnDelay:1500, minDist:2.5, maxDist:7, predictive:true, fuse:800, speed:0.035,
-                  rule:"Red & blue groups orbit **opposite** directions on two circles."}
-};
-
-let ACTIVE = CONFIG.pursuit;
-let DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:0,
-            cursorVel:{x:0,y:0},tracking:0,anticip:0};
-let isRunning = false, isVR = false, synth = null, trails = [];
-
-/* ---------- DOM HELPERS ---------- */
-const $ = s => document.querySelector(s);
-const scene   = $('a-scene');
-const hotspots= $('#hotspots');
-const trailCon= $('#trails');
-const prog    = $('.progress-fill');
-const scoreEl = $('#score');
-const focusEl = $('#focus-quality');
-const predEl  = $('#learning-rate');
-const timeEl  = $('#session-time');
-const hitEl   = $('#targets-hit');
-const modeSel = $('#training-mode');
-const startBtn= $('#start-training');
-const vrBtn   = $('#vr-stereo-toggle');
-const msg     = $('.point-message');
-const instr   = $('.instructions');
-const nodPrompt = $('#nod-prompt');
-
-/* ---------- AUDIO ---------- */
-function initAudio() {
-    if (synth) return;
-    synth = new Tone.Synth({oscillator:{type:"sine"}}).toDestination();
-    window.success = () => synth.triggerAttackRelease(["C5","E5","G5"], "16n");
-    window.focus   = q => synth.triggerAttackRelease(Tone.Frequency(60 + Math.floor(q/5), "midi").toFrequency(), "32n");
-}
-
-/* ---------- HAPTIC ---------- */
-function hapticPulse() {
-    const pad = navigator.getGamepads?.()[0];
-    if (pad?.hapticActuators?.[0]) pad.hapticActuators[0].pulse(0.8, 100);
-}
-
-/* ---------- CREATE SPHERE ---------- */
-function createSphere(finalPos, color = '#667eea') {
-    const el = document.createElement('a-entity');
-
-    // start at centre
-    el.setAttribute('position', '0 1.6 0');
-    el.setAttribute('class', 'hotspot');
-    el.setAttribute('geometry', {
-        primitive: 'sphere',
-        radius: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 0.3 : 0.2,
-        segmentsWidth: 32,
-        segmentsHeight: 32
-    });
-    el.setAttribute('material', {
-        shader: 'standard',
-        color,
-        emissive: color,
-        emissiveIntensity: 0.8,
-        metalness: 0.1,
-        roughness: 0.5
-    });
-
-    // pulse glow
-    el.setAttribute('animation__pulse', {
-        property: 'material.emissiveIntensity',
-        from: 0.6, to: 1.2, dur: 1200,
-        easing: 'easeInOutSine', loop: true, dir: 'alternate'
-    });
-
-    // fuse ring
-    const ring = document.createElement('a-entity');
-    ring.setAttribute('geometry', {primitive:'ring', radiusInner:0.28, radiusOuter:0.35});
-    ring.setAttribute('material', {shader:'standard', color:'#fff', opacity:0.8, transparent:true, side:'double'});
-    ring.setAttribute('visible', false);
-    el.appendChild(ring);
-
-    // trail (predictive modes only)
-    let trail = null;
-    if (ACTIVE.predictive) {
-        trail = document.createElement('a-entity');
-        trail.setAttribute('line', 'color:#764ba2;opacity:0.4');
-        trailCon.appendChild(trail);
-        trails.push({el: trail, points: []});
-    }
-
-    // interaction
-    let focusStart = 0;
-    el.addEventListener('mouseenter', () => {
-        focusStart = Date.now();
-        ring.setAttribute('visible', true);
-        ring.setAttribute('animation', {
-            property: 'geometry.thetaLength',
-            from: 0, to: 360, dur: ACTIVE.fuse, easing: 'linear'
-        });
-    });
-    el.addEventListener('mouseleave', () => {
-        ring.setAttribute('visible', false);
-        ring.removeAttribute('animation');
-        ring.setAttribute('geometry', {thetaLength: 0});
-    });
-    el.addEventListener('click', () => {
-        const qual = Math.min(100, (Date.now() - focusStart) / ACTIVE.fuse * 100);
-        const enhanced = qual * 0.4 + DATA.tracking * 0.3 + DATA.anticip * 0.3;
-        DATA.focus = enhanced;
-        focusEl.textContent = Math.round(enhanced) + '%';
-        if (synth) { focus(enhanced); setTimeout(success, 200); }
-        hapticPulse();
-
-        // learning model
-        DATA.trials++;
-        const f = enhanced / 100;
-        if (DATA.trials < 20) DATA.fast += 10 * f;
-        else DATA.fast = DATA.fast * 0.85 + 5 * f;
-        DATA.slow = DATA.slow * 0.96 + 2 * f * Math.log(DATA.trials + 1);
-        DATA.total = DATA.fast + DATA.slow;
-        prog.style.width = Math.min(100, (DATA.total / 200) * 100) + '%';
-        scoreEl.textContent = Math.floor(DATA.total);
-        hitEl.textContent = ++DATA.hits;
-
-        // disappear
-        el.setAttribute('animation__scale', {
-            property: 'scale', to: '0 0 0', dur: 300, easing: 'easeInQuad'
-        });
-        setTimeout(() => { hotspots.removeChild(el); }, 350);
-        if (trail) trailCon.removeChild(trail);
-        setTimeout(() => spawnOne(), ACTIVE.spawnDelay);
-    });
-
-    // movement for predictive modes
-    if (ACTIVE.predictive) {
-        const start = performance.now();
-        const radius = ACTIVE === CONFIG.prediction ? 3 : (finalPos.x > 0 ? 4 : 2.5);
-        const dir    = ACTIVE === CONFIG.coordination ? (finalPos.x > 0 ? 1 : -1) : 1;
-        el.tick = (t, dt) => {
-            const elapsed = (t - start) / 1000;
-            const angle = dir * elapsed * ACTIVE.speed;
-            const x = radius * Math.cos(angle);
-            const z = radius * Math.sin(angle) - 4;
-            el.setAttribute('position', {x, y: finalPos.y, z});
-            if (trail) {
-                const cur = `${x} ${finalPos.y} ${z}`;
-                const attr = trail.getAttribute('line');
-                if (attr.start) trail.setAttribute('line', {start: attr.start, end: cur});
-                else trail.setAttribute('line', {start: cur, end: cur});
+    <script>
+        // Core settings
+        const CONFIG = {
+            pursuit: {
+                numHotspots: 5,
+                spawnDelay: 2000,
+                minDistance: 3,
+                maxDistance: 6,
+                predictiveMode: false,
+                fuseTimeout: 1000,
+                moveSpeed: 0.02
+            },
+            prediction: {
+                numHotspots: 3,
+                spawnDelay: 3000,
+                minDistance: 2,
+                maxDistance: 5,
+                predictiveMode: true,
+                fuseTimeout: 1500,
+                moveSpeed: 0.03
+            },
+            coordination: {
+                numHotspots: 8,
+                spawnDelay: 1500,
+                minDistance: 2.5,
+                maxDistance: 7,
+                predictiveMode: true,
+                fuseTimeout: 800,
+                moveSpeed: 0.04
             }
         };
-    }
-
-    // animate from centre → finalPos
-    el.setAttribute('animation__move', {
-        property: 'position',
-        to: `${finalPos.x} ${finalPos.y} ${finalPos.z}`,
-        dur: 800,
-        easing: 'easeOutQuad'
-    });
-
-    hotspots.appendChild(el);
-    return el;
-}
-
-/* ---------- SPAWN ONE ---------- */
-function spawnOne() {
-    if (!isRunning) return;
-    let finalPos;
-    if (ACTIVE === CONFIG.prediction) {
-        const i = DATA.hits % 8;
-        const a = i * Math.PI / 4;
-        finalPos = {x: 3 * Math.cos(a), y: 0.2 + Math.random() * 0.4, z: 3 * Math.sin(a) - 4};
-    } else if (ACTIVE === CONFIG.coordination) {
-        const group = DATA.hits % 2 === 0 ? 'red' : 'blue';
-        const radius = group === 'red' ? 4 : 2.5;
-        const i = Math.floor(DATA.hits / 2) % 8;
-        const a = i * Math.PI / 4;
-        finalPos = {x: radius * Math.cos(a), y: 0.2 + Math.random() * 0.4, z: radius * Math.sin(a) - 4};
-    } else {
-        finalPos = {
-            x: (Math.random() * 3) - 1.5,
-            y: (Math.random() * 2) - 0.5,
-            z: -(Math.random() * (ACTIVE.maxDist - ACTIVE.minDist) + ACTIVE.minDist)
+        
+        // Current active configuration
+        let ACTIVE_CONFIG = CONFIG.pursuit;
+        
+        // Learning data with cursor tracking
+        const LEARNING_DATA = {
+            fastComponent: 0,
+            slowComponent: 0,
+            totalLearning: 0,
+            decayRate: {
+                fast: 0.15,
+                slow: 0.04
+            },
+            trials: 0,
+            targetsHit: 0,
+            sessionStartTime: 0,
+            focusQuality: 0,
+            cursorHistory: [],
+            cursorVelocity: { x: 0, y: 0, z: 0 },
+            anticipationScore: 0,
+            trackingAccuracy: 0,
+            predictionEfficiency: 0
         };
-    }
-    const color = ACTIVE === CONFIG.coordination ? (DATA.hits % 2 === 0 ? '#ff5555' : '#5555ff') : '#667eea';
-    createSphere(finalPos, color);
-}
 
-/* ---------- CURSOR TRACKING ---------- */
-let lastCam = null;
-setInterval(() => {
-    if (!isRunning) return;
-    const cam = document.querySelector('a-camera');
-    if (!cam) return;
-    const rot = cam.getAttribute('rotation');
-    const cur = {x: rot.y, y: rot.x, t: Date.now()};
-    if (lastCam) {
-        const dt = (cur.t - lastCam.t) / 1000;
-        if (dt > 0) DATA.cursorVel = {x: (cur.x - lastCam.x) / dt, y: (cur.y - lastCam.y) / dt};
-    }
-    lastCam = cur;
+        // Cursor tracking variables
+        let lastCursorPos = null;
+        let cursorUpdateInterval = null;
+        let isTrainingActive = false;
 
-    // nearest target distance
-    const targets = document.querySelectorAll('.hotspot');
-    let min = Infinity;
-    targets.forEach(t => {
-        const p = t.getAttribute('position');
-        const dx = Math.atan2(p.x, -p.z) * (180 / Math.PI) - rot.y;
-        const dy = Math.atan2(p.y, -p.z) * (180 / Math.PI) - rot.x;
-        const d = Math.hypot(dx, dy);
-        if (d < min) min = d;
-    });
-    DATA.tracking = Math.max(0, 100 - min * 8);
-    DATA.anticip  = Math.max(0, 100 - min * 6);
-    DATA.predEff  = DATA.tracking * 0.4 + DATA.anticip * 0.6;
-    predEl.textContent = Math.round(DATA.predEff) + '%';
-}, 50);
-
-/* ---------- NOD TO CONTINUE ---------- */
-let nodState = 'waitDown';
-function startNodPrompt() {
-    nodPrompt.style.display = 'block';
-    nodState = 'waitDown';
-}
-function endNodPrompt() {
-    nodPrompt.style.display = 'none';
-    // spawn the first batch
-    for (let i = 0; i < ACTIVE.num; i++) setTimeout(spawnOne, i * 400);
-}
-AFRAME.registerComponent('nod-listener', {
-    tick: function () {
-        if (!isRunning) return;
-        const pitch = this.el.getAttribute('rotation').x;
-        if (nodState === 'waitDown' && pitch > 20) nodState = 'down';
-        else if (nodState === 'down' && pitch < -10) {
-            endNodPrompt();
-            this.el.removeAttribute('nod-listener');
+        // Audio synth setup
+        let synth;
+        let isAudioInitialized = false;
+        
+        function initAudio() {
+            if (isAudioInitialized) return;
+            
+            synth = new Tone.Synth({
+                oscillator: {
+                    type: "sine"
+                },
+                envelope: {
+                    attack: 0.01,
+                    decay: 0.1,
+                    sustain: 0.5,
+                    release: 0.4
+                }
+            }).toDestination();
+            
+            window.successSound = () => {
+                synth.triggerAttackRelease("C5", "16n");
+                setTimeout(() => synth.triggerAttackRelease("E5", "16n"), 100);
+                setTimeout(() => synth.triggerAttackRelease("G5", "16n"), 200);
+            };
+            
+            window.errorSound = () => {
+                synth.triggerAttackRelease("A3", "16n");
+                setTimeout(() => synth.triggerAttackRelease("G3", "16n"), 150);
+            };
+            
+            window.focusSound = (quality) => {
+                const note = 60 + Math.floor(quality / 5);
+                const freq = Tone.Frequency(note, "midi").toFrequency();
+                synth.triggerAttackRelease(freq, "32n");
+            };
+            
+            isAudioInitialized = true;
         }
-    }
-});
 
-/* ---------- SESSION ---------- */
-function startSession() {
-    // reset
-    DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:Date.now(),
-            cursorVel:{x:0,y:0},tracking:0,anticip:0};
-    isRunning = true;
-    hotspots.innerHTML = ''; trailCon.innerHTML = ''; trails = [];
-    prog.style.width = '0%';
-    scoreEl.textContent = '0'; focusEl.textContent = '0%'; predEl.textContent = '0%';
-    hitEl.textContent = '0';
-    setInterval(() => {
-        const s = Math.floor((Date.now() - DATA.startTime) / 1000);
-        timeEl.textContent = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-    }, 500);
+        // Main DOM elements
+        const scene = document.querySelector('a-scene');
+        const hotspotsContainer = document.querySelector('#hotspots');
+        const pathIndicators = document.querySelector('#path-indicators');
+        const pointMessage = document.querySelector('.point-message');
+        const orientationMessage = document.getElementById('orientation-message');
+        const outOfBoundsMessage = document.querySelector('.out-of-bounds-message');
+        const progressFill = document.querySelector('.progress-fill');
+        const scoreEl = document.getElementById('score');
+        const focusQualityEl = document.getElementById('focus-quality');
+        const learningRateEl = document.getElementById('learning-rate');
+        const sessionTimeEl = document.getElementById('session-time');
+        const targetsHitEl = document.getElementById('targets-hit');
+        const trainingModeEl = document.getElementById('training-mode');
+        const startTrainingBtn = document.getElementById('start-training');
+        const vrStereoToggle = document.getElementById('vr-stereo-toggle');
 
-    // show nod prompt
-    startNodPrompt();
-    document.querySelector('a-camera').setAttribute('nod-listener', '');
-}
-startBtn.onclick = () => { initAudio(); startSession(); };
+        // Hotspots tracking
+        let activeHotspots = [];
+        let predictivePattern = [];
+        let learningProgress = 0;
+        let sessionTimer = null;
+        let isVRMode = false;
+        
+        // Calculate cursor velocity and update tracking
+        function updateCursorTracking() {
+            if (!isTrainingActive) return;
+            
+            const camera = document.querySelector('a-camera');
+            if (!camera) return;
+            
+            const cameraRotation = camera.getAttribute('rotation');
+            const currentPos = {
+                x: cameraRotation.y,
+                y: cameraRotation.x,
+                z: 0,
+                timestamp: Date.now()
+            };
+            
+            if (lastCursorPos) {
+                const dt = (currentPos.timestamp - lastCursorPos.timestamp) / 1000;
+                if (dt > 0) {
+                    LEARNING_DATA.cursorVelocity = {
+                        x: (currentPos.x - lastCursorPos.x) / dt,
+                        y: (currentPos.y - lastCursorPos.y) / dt,
+                        z: 0
+                    };
+                }
+            }
+            
+            LEARNING_DATA.cursorHistory.push(currentPos);
+            if (LEARNING_DATA.cursorHistory.length > 10) {
+                LEARNING_DATA.cursorHistory.shift();
+            }
+            
+            lastCursorPos = currentPos;
+            
+            calculateTrackingMetrics();
+        }
+        
+        // Calculate distance between cursor and target in screen space
+        function getTargetCursorDistance(target) {
+            const camera = document.querySelector('a-camera');
+            const cameraRotation = camera.getAttribute('rotation');
+            const targetPos = target.getAttribute('position');
+            
+            const dx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
+            const dy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
+            
+            const angularDistance = Math.sqrt(
+                Math.pow(dx - cameraRotation.y, 2) +
+                Math.pow(dy - cameraRotation.x, 2)
+            );
+            
+            return angularDistance;
+        }
+        
+        // Predict where cursor will be based on velocity
+        function predictCursorPosition(timeAhead) {
+            if (!lastCursorPos) return null;
+            
+            return {
+                x: lastCursorPos.x + LEARNING_DATA.cursorVelocity.x * timeAhead,
+                y: lastCursorPos.y + LEARNING_DATA.cursorVelocity.y * timeAhead
+            };
+        }
+        
+        // Calculate tracking metrics
+        function calculateTrackingMetrics() {
+            if (activeHotspots.length === 0) return;
+            
+            let nearestTarget = null;
+            let minDistance = Infinity;
+            
+            activeHotspots.forEach(target => {
+                const dist = getTargetCursorDistance(target);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestTarget = target;
+                }
+            });
+            
+            if (!nearestTarget) return;
+            
+            LEARNING_DATA.trackingAccuracy = Math.max(0, 100 - minDistance * 10);
+            
+            const predictedPos = predictCursorPosition(0.5);
+            if (predictedPos) {
+                const targetPos = nearestTarget.getAttribute('position');
+                const predictedDx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
+                const predictedDy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
+                
+                const predictedDistance = Math.sqrt(
+                    Math.pow(predictedDx - predictedPos.x, 2) +
+                    Math.pow(predictedDy - predictedPos.y, 2)
+                );
+                
+                LEARNING_DATA.anticipationScore = Math.max(0, 100 - predictedDistance * 8);
+            }
+            
+            LEARNING_DATA.predictionEfficiency = 
+                (LEARNING_DATA.trackingAccuracy * 0.4) + 
+                (LEARNING_DATA.anticipationScore * 0.6);
+            
+            updateLearningUI();
+        }
+        
+        // Initialize the session
+        function initSession() {
+            LEARNING_DATA.sessionStartTime = Date.now();
+            LEARNING_DATA.trials = 0;
+            LEARNING_DATA.targetsHit = 0;
+            LEARNING_DATA.fastComponent = 0;
+            LEARNING_DATA.slowComponent = 0;
+            LEARNING_DATA.totalLearning = 0;
+            LEARNING_DATA.focusQuality = 0;
+            LEARNING_DATA.cursorHistory = [];
+            LEARNING_DATA.cursorVelocity = { x: 0, y: 0, z: 0 };
+            LEARNING_DATA.anticipationScore = 0;
+            LEARNING_DATA.trackingAccuracy = 0;
+            LEARNING_DATA.predictionEfficiency = 0;
+            
+            lastCursorPos = null;
+            isTrainingActive = true;
+            
+            while (hotspotsContainer.firstChild) {
+                hotspotsContainer.removeChild(hotspotsContainer.firstChild);
+            }
+            
+            while (pathIndicators.firstChild) {
+                pathIndicators.removeChild(pathIndicators.firstChild);
+            }
+            
+            activeHotspots = [];
+            
+            updateLearningUI();
+            updateScoreUI();
+            
+            if (sessionTimer) clearInterval(sessionTimer);
+            sessionTimer = setInterval(updateSessionTime, 1000);
+            
+            if (cursorUpdateInterval) clearInterval(cursorUpdateInterval);
+            cursorUpdateInterval = setInterval(updateCursorTracking, 50);
+            
+            for (let i = 0; i < ACTIVE_CONFIG.numHotspots; i++) {
+                setTimeout(() => createHotspot(), i * 500);
+            }
+            
+            if (ACTIVE_CONFIG.predictiveMode) {
+                generatePredictivePattern();
+            }
+            
+            document.addEventListener('click', initAudio, { once: true });
+        }
+        
+        // Generate a predictable pattern for targets
+        function generatePredictivePattern() {
+            predictivePattern = [];
+            const patternLength = 8;
+            const radius = 3;
+            
+            for (let i = 0; i < patternLength; i++) {
+                const angle = (i / patternLength) * Math.PI * 2;
+                const x = radius * Math.sin(angle * 2) * 0.7;
+                const y = radius * Math.sin(angle) * 0.3;
+                const z = -radius * 1.5;
+                
+                predictivePattern.push({ x, y, z });
+            }
+            
+            if (ACTIVE_CONFIG.predictiveMode) {
+                visualizePredictivePattern();
+            }
+        }
+        
+        // Create visual cues for the predictive pattern
+        function visualizePredictivePattern() {
+            predictivePattern.forEach((pos, index) => {
+                const indicator = document.createElement('a-entity');
+                
+                indicator.setAttribute('geometry', {
+                    primitive: 'ring',
+                    radiusInner: 0.05,
+                    radiusOuter: 0.08
+                });
+                
+                indicator.setAttribute('material', {
+                    color: '#667eea',
+                    opacity: 0.3,
+                    transparent: true,
+                    shader: 'flat'
+                });
+                
+                indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+                
+                if (index > 0) {
+                    const prevPos = predictivePattern[index - 1];
+                    const line = document.createElement('a-entity');
+                    
+                    line.setAttribute('line', {
+                        start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`,
+                        end: `${pos.x} ${pos.y} ${pos.z}`,
+                        color: '#764ba2',
+                        opacity: 0.2
+                    });
+                    
+                    pathIndicators.appendChild(line);
+                }
+                
+                pathIndicators.appendChild(indicator);
+            });
+        }
 
-/* ---------- MODE SWITCH ---------- */
-modeSel.onchange = () => {
-    const m = modeSel.value;
-    ACTIVE = CONFIG[m];
-    let txt = `<h3>${m.charAt(0).toUpperCase() + m.slice(1)} Mode</h3><p>`;
-    if (m === 'prediction') txt += CONFIG.prediction.rule;
-    else if (m === 'coordination') txt += CONFIG.coordination.rule;
-    else txt += 'Track the moving spheres smoothly.';
-    txt += '</p>';
-    instr.innerHTML = txt;
-};
-modeSel.dispatchEvent(new Event('change'));
-
-/* ---------- VR TOGGLE ---------- */
-vrBtn.onclick = async () => {
-    isVR = !isVR;
-    if (isVR) {
-        await scene.enterVR();
-        document.body.classList.add('vr-mode');
-        vrBtn.textContent = 'Exit VR Stereo Mode';
-        if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(() => {});
-    } else {
-        await scene.exitVR();
-        document.body.classList.remove('vr-mode');
-        vrBtn.textContent = 'Enable VR Stereo Mode';
-    }
-};
-scene.addEventListener('enter-vr', () => { isVR = true; document.body.classList.add('vr-mode'); });
-scene.addEventListener('exit-vr', () => { isVR = false; document.body.classList.remove('vr-mode'); });
-
-/* ---------- ORIENTATION / BOUNDS ---------- */
-window.addEventListener('resize', checkOri);
-window.addEventListener('orientationchange', checkOri);
-function checkOri() {
-    if (innerHeight > innerWidth) {
-        $('#orientation-message').style.display = 'flex';
-        scene.pause();
-    } else {
-        $('#orientation-message').style.display = 'none';
-        scene.play();
-    }
-}
-setInterval(() => {
-    const cam = document.querySelector('a-camera');
-    if (!cam) return;
-    const r = cam.getAttribute('rotation');
-    if (Math.abs(r.y) > 45 || Math.abs(r.x) > 30) {
-        $('.out-of-bounds-message').style.display = 'block';
-        if (navigator.vibrate) navigator.vibrate(100);
-        DATA.fast *= 0.94;
-    } else {
-        $('.out-of-bounds-message').style.display = 'none';
-    }
-}, 120);
-checkOri();
-</script>
+        // Create a new hotspot/target
+        function createHotspot() {
+            const hotspot = document.createElement('a-entity');
+            
+            let position;
+            if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
+                const patternIndex = Math.floor(Math.random() * predictivePattern.length);
+                position = predictivePattern[patternIndex];
+            } else {
+                const x = (Math.random() * 3) - 1.5;
+                const y = (Math.random() * 2) - 0.5;
+                const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
+                position = { x, y, z };
+            }
+            
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const radius = isMobile ? 0.3 : 0.2;
+            
+            hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+            hotspot.setAttribute('geometry', {
+                primitive: 'sphere',
+                radius: radius
+            });
+            hotspot.setAttribute('material', {
+                shader: 'standard',
+                color: '#667eea',
+                emissive: '#764ba2',
+                emissiveIntensity: 0.8
+            });
+            hotspot.setAttribute('class', 'hotspot');
+            
+            const ring = document.createElement('a-entity');
+            ring.setAttribute('geometry', {
+                primitive: 'ring',
+                radiusInner: radius * 1.33,
+                radiusOuter: radius * 1.67
+            });
+            ring.setAttribute('material', {
+                color: '#FFFFFF',
+                opacity: 0.8,
+                transparent: true,
+                side: 'double'
+            });
+            ring.setAttribute('visible', false);
+            hotspot.appendChild(ring);
+            
+            hotspot.dataset.focusStartTime = 0;
+            hotspot.dataset.focusQuality = 0;
+            hotspot.dataset.direction = Math.random() > 0.5 ? 1 : -1;
+            
+            hotspot.addEventListener('mouseenter', function() {
+                hotspot.dataset.focusStartTime = Date.now();
+                ring.setAttribute('visible', true);
+                
+                ring.setAttribute('animation', {
+                    property: 'geometry.thetaLength',
+                    dur: ACTIVE_CONFIG.fuseTimeout,
+                    from: 0,
+                    to: 360,
+                    easing: 'linear'
+                });
+            });
+            
+            hotspot.addEventListener('mouseleave', function() {
+                ring.setAttribute('visible', false);
+                ring.removeAttribute('animation');
+                ring.setAttribute('geometry', {
+                    primitive: 'ring',
+                    radiusInner: radius * 1.33,
+                    radiusOuter: radius * 1.67,
+                    thetaLength: 0
+                });
+                
+                hotspot.dataset.focusQuality = 0;
+            });
+            
+            hotspot.addEventListener('click', function() {
+                const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
+                const focusQuality = Math.min(100, (focusDuration / ACTIVE_CONFIG.fuseTimeout) * 100);
+                
+                const enhancedQuality = (focusQuality * 0.4) + 
+                                       (LEARNING_DATA.trackingAccuracy * 0.3) + 
+                                       (LEARNING_DATA.anticipationScore * 0.3);
+                
+                LEARNING_DATA.focusQuality = enhancedQuality;
+                
+                if (isAudioInitialized) {
+                    window.focusSound(enhancedQuality);
+                    setTimeout(() => window.successSound(), 300);
+                }
+                
+                updateLearning(enhancedQuality);
+                
+                this.setAttribute('animation', {
+                    property: 'scale',
+                    dur: 500,
+                    to: '0 0 0',
+                    easing: 'easeInOutQuad'
+                });
+                
+                setTimeout(() => {
+                    const index = activeHotspots.indexOf(this);
+                    if (index > -1) activeHotspots.splice(index, 1);
+                    
+                    this.parentNode.removeChild(this);
+                    setTimeout(createHotspot, ACTIVE_CONFIG.spawnDelay);
+                    
+                    LEARNING_DATA.targetsHit++;
+                    targetsHitEl.textContent = LEARNING_DATA.targetsHit;
+                    
+                    scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
+                    
+                    if (LEARNING_DATA.targetsHit % 10 === 0) {
+                        showMilestoneMessage();
+                    }
+                }, 300);
+            });
+            
+            if (ACTIVE_CONFIG.predictiveMode) {
+                hotspot.setAttribute('animation', {
+                    property: 'position',
+                    dur: 5000 + Math.random() * 5000,
+                    easing: 'linear',
+                    loop: true,
+                    to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}`
+                });
+            }
+            
+            hotspotsContainer.appendChild(hotspot);
+            activeHotspots.push(hotspot);
+            
+            hotspot.tick = (time, timeDelta) => {
+                if (!ACTIVE_CONFIG.predictiveMode) return;
+                
+                const currentPos = hotspot.getAttribute('position');
+                const speed = ACTIVE_CONFIG.moveSpeed;
+                const dir = parseInt(hotspot.dataset.direction);
+                
+                currentPos.x += Math.sin(time / 1000) * speed * dir;
+                currentPos.y += Math.cos(time / 2000) * speed * dir;
+                
+                hotspot.setAttribute('position', currentPos);
+            };
+        }
+        
+        // Update learning model
+        function updateLearning(focusQuality) {
+            LEARNING_DATA.trials++;
+            
+            const learningFactor = focusQuality / 100;
+            
+            if (LEARNING_DATA.trials < 20) {
+                LEARNING_DATA.fastComponent += (10 * learningFactor);
+            } else {
+                LEARNING_DATA.fastComponent *= (1 - LEARNING_DATA.decayRate.fast);
+                LEARNING_DATA.fastComponent += (5 * learningFactor);
+            }
+            
+            LEARNING_DATA.slowComponent *= (1 - LEARNING_DATA.decayRate.slow);
+            LEARNING_DATA.slowComponent += (2 * learningFactor * Math.log(LEARNING_DATA.trials + 1));
+            
+            LEARNING_DATA.totalLearning = LEARNING_DATA.fastComponent + LEARNING_DATA.slowComponent;
+            
+            learningProgress = Math.min(100, (LEARNING_DATA.totalLearning / 200) * 100);
+            progressFill.style.width = `${learningProgress}%`;
+            
+            updateLearningUI();
+        }
+        
+        // Update UI with learning metrics
+        function updateLearningUI() {
+            focusQualityEl.textContent = `${Math.round(LEARNING_DATA.focusQuality)}%`;
+            
+            const learningRate = LEARNING_DATA.trials > 1 ? 
+                Math.round(LEARNING_DATA.predictionEfficiency) : 0;
+            learningRateEl.textContent = `${learningRate}%`;
+        }
+        
+        // Show milestone message
+        function showMilestoneMessage() {
+            let message;
+            
+            if (LEARNING_DATA.targetsHit === 10) {
+                message = "Initial learning phase complete! Your cerebellum is adapting.";
+            } else if (LEARNING_DATA.targetsHit === 25) {
+                message = "Fast learning engaged! Your cerebellar cortex is showing activity.";
+            } else if (LEARNING_DATA.targetsHit === 50) {
+                message = "Consolidation beginning! Memory transferring to cerebellar nuclei.";
+            } else if (LEARNING_DATA.targetsHit === 100) {
+                message = "Excellent progress! Long-term motor learning pathways forming.";
+            } else {
+                message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`;
+            }
+            
+            pointMessage.textContent = message;
+            pointMessage.style.display = 'block';
+            pointMessage.classList.remove('fade');
+            
+            setTimeout(() => {
+                pointMessage.classList.add('fade');
+                setTimeout(() => {
+                    pointMessage.style.display = 'none';
+                }, 500);
+            }, 5000);
+        }
+        
+        // Update session time display
+        function updateSessionTime() {
+            const elapsedSec = Math.floor((Date.now() - LEARNING_DATA.sessionStartTime) / 1000);
+            const minutes = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
+            const seconds = (elapsedSec % 60).toString().padStart(2, '0');
+            sessionTimeEl.textContent = `${minutes}:${seconds}`;
+        }
+        
+        // Update score display
+        function updateScoreUI() {
+            scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
+        }
+        
+        // Check device orientation
+        function checkOrientation() {
+            if (window.innerHeight > window.innerWidth) {
+                orientationMessage.style.display = 'flex';
+                scene.pause();
+            } else {
+                orientationMessage.style.display = 'none';
+                scene.play();
+            }
+        }
+        
+        // Check if gaze is within bounds
+        function checkOutOfBounds() {
+            const camera = document.querySelector('a-camera');
+            const cameraRotation = camera.getAttribute('rotation');
+            
+            const yaw = cameraRotation.y;
+            const pitch = cameraRotation.x;
+            
+            const yawLimit = 45;
+            const pitchLimit = 30;
+            
+            if (Math.abs(yaw) > yawLimit || Math.abs(pitch) > pitchLimit) {
+                outOfBoundsMessage.style.display = 'block';
+                if (navigator.vibrate) {
+                    navigator.vibrate(200);
+                }
+                
+                if (LEARNING_DATA.fastComponent > 0) {
+                    LEARNING_DATA.fastComponent *= 0.95;
+                    updateLearningUI();
+                }
+            } else {
+                outOfBoundsMessage.style.display = 'none';
+            }
+        }
+        
+        // Change training mode
+        function changeTrainingMode() {
+            const mode = trainingModeEl.value;
+            ACTIVE_CONFIG = CONFIG[mode];
+            
+            const instructionsEl = document.querySelector('.instructions');
+            
+            switch(mode) {
+                case 'pursuit':
+                    instructionsEl.innerHTML = `
+                        <h3>Pursuit Learning Exercise</h3>
+                        <p>Focus on dots and track them carefully to train smooth pursuit pathways.</p>
+                    `;
+                    break;
+                case 'prediction':
+                    instructionsEl.innerHTML = `
+                        <h3>Prediction Training Exercise</h3>
+                        <p>Anticipate target movements before they occur to enhance predictive motor learning.</p>
+                    `;
+                    break;
+                case 'coordination':
+                    instructionsEl.innerHTML = `
+                        <h3>Coordination Exercise</h3>
+                        <p>Track multiple moving targets to improve complex cerebellar coordination pathways.</p>
+                    `;
+                    break;
+            }
+        }
+        
+        // Toggle VR Stereo Mode
+        function toggleVRStereoMode() {
+            isVRMode = !isVRMode;
+            
+            if (isVRMode) {
+                scene.enterVR();
+                document.body.classList.add('vr-mode');
+                vrStereoToggle.textContent = '🥽 Exit VR Stereo Mode';
+                
+                if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen();
+                }
+                
+                if (screen.orientation && screen.orientation.lock) {
+                    screen.orientation.lock('landscape').catch(err => {
+                        console.log('Orientation lock failed:', err);
+                    });
+                }
+            } else {
+                scene.exitVR();
+                document.body.classList.remove('vr-mode');
+                vrStereoToggle.textContent = '🥽 Enable VR Stereo Mode';
+                
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+        
+        // Event listeners
+        window.addEventListener('resize', checkOrientation);
+        window.addEventListener('orientationchange', checkOrientation);
+        trainingModeEl.addEventListener('change', changeTrainingMode);
+        startTrainingBtn.addEventListener('click', () => {
+            // Start immediately with pursuit mode
+            ACTIVE_CONFIG = CONFIG.pursuit;
+            trainingModeEl.value = 'pursuit';
+            changeTrainingMode();
+            initSession();
+            initAudio();
+        });
+        
+        vrStereoToggle.addEventListener('click', () => {
+            toggleVRStereoMode();
+        });
+        
+        scene.addEventListener('enter-vr', () => {
+            isVRMode = true;
+            document.body.classList.add('vr-mode');
+        });
+        
+        scene.addEventListener('exit-vr', () => {
+            isVRMode = false;
+            document.body.classList.remove('vr-mode');
+        });
+        
+        setInterval(checkOutOfBounds, 100);
+        
+        scene.addEventListener('loaded', () => {
+            checkOrientation();
+            changeTrainingMode();
+        });
+    </script>
 </body>
 </html>
