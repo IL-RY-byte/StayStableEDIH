@@ -604,54 +604,57 @@
             }
         }
         
+      
         // Create visual cues for the predictive pattern
-        function visualizePredictivePattern() {
-            predictivePattern.forEach((pos, index) => {
-                const indicator = document.createElement('a-entity');
-                
-                indicator.setAttribute('geometry', {
-                    primitive: 'ring',
-                    radiusInner: 0.05,
-                    radiusOuter: 0.08
-                });
-                
-                // depthWrite: false допомагає рендерити прозорість
-                indicator.setAttribute('material', {
-                    color: '#667eea',
-                    opacity: 0.3,
-                    transparent: true,
-                    shader: 'flat',
-                    depthWrite: false 
-                });
-                
-                indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-                
-                if (index > 0) {
-                    const prevPos = predictivePattern[index - 1];
-                    const line = document.createElement('a-entity');
-                    
-                    line.setAttribute('line', {
-                        start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`,
-                        end: `${pos.x} ${pos.y} ${pos.z}`,
-                        color: '#764ba2',
-                        opacity: 0.2
-                    });
-
-                    // Теж додаємо depthWrite: false для лінії
-                    line.setAttribute('material', {
-                        shader: 'flat',
-                        color: '#764ba2',
-                        opacity: 0.2,
-                        transparent: true,
-                        depthWrite: false
-                    });
-                    
-                    pathIndicators.appendChild(line);
-                }
-                
-                pathIndicators.appendChild(indicator);
+function visualizePredictivePattern() {
+    predictivePattern.forEach((pos, index) => {
+        const indicator = document.createElement('a-entity');
+        
+        indicator.setAttribute('geometry', {
+            primitive: 'ring',
+            radiusInner: 0.05,
+            radiusOuter: 0.08
+        });
+        
+        // *** ВИПРАВЛЕННЯ: 'depthWrite: false' ПРИБРАНО ***
+        // Це змусить прозорі кільця "поважати" глибину сфер
+        indicator.setAttribute('material', {
+            color: '#667eea',
+            opacity: 0.3,
+            transparent: true,
+            shader: 'flat'
+            // depthWrite: false  <-- ПРИБРАНО
+        });
+        
+        indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
+        
+        if (index > 0) {
+            const prevPos = predictivePattern[index - 1];
+            const line = document.createElement('a-entity');
+            
+            line.setAttribute('line', {
+                start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`,
+                end: `${pos.x} ${pos.y} ${pos.z}`,
+                color: '#764ba2',
+                opacity: 0.2
             });
+
+            // *** ВИПРАВЛЕННЯ: 'depthWrite: false' ПРИБРАНО ТУТ ТАКОЖ ***
+            // Це змусить прозорі лінії "поважати" глибину сфер
+            line.setAttribute('material', {
+                shader: 'flat',
+                color: '#764ba2',
+                opacity: 0.2,
+                transparent: true
+                // depthWrite: false  <-- ПРИБРАНО
+            });
+            
+            pathIndicators.appendChild(line);
         }
+        
+        pathIndicators.appendChild(indicator);
+    });
+}
 
         // Create a new hotspot/target
         function createHotspot() {
