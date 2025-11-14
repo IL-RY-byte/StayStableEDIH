@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StayStable - Cerebellar Rehabilitation VR</title>
+    <title>StayStable VR – Fixed for Stereo</title>
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.min.js"></script>
     <style>
@@ -68,9 +68,7 @@
     background="color:#f0e6ff"
     embedded>
     
-    <!-- УБРАН КУРСОР С КАМЕРЫ — В VR ИСПОЛЬЗУЕТСЯ ГЛАЗ -->
     <a-camera position="0 1.6 0" wasd-controls-enabled="false"></a-camera>
-
     <a-entity id="hotspots"></a-entity>
     <a-entity id="trails"></a-entity>
 </a-scene>
@@ -79,17 +77,15 @@
 /* ---------- CONFIG ---------- */
 const CONFIG = {
     pursuit:    {num:5, spawnDelay:2000, minDist:3, maxDist:6, predictive:false, fuse:1000, speed:0},
-    prediction: {num:4, spawnDelay:3000, minDist:2, maxDist:5, predictive:true,  fuse:1500, speed:0.025,
-                 rule:"Targets move **clockwise** on a circle (radius 3 m)."},
-    coordination:{num:6, spawnDelay:1500, minDist:2.5, maxDist:7, predictive:true, fuse:800, speed:0.035,
-                  rule:"Red & blue groups orbit **opposite** directions on two circles."}
+    prediction: {num:4, spawnDelay:3000, minDist:2, maxDist:5, predictive:true,  fuse:1500, speed:0.025},
+    coordination:{num:6, spawnDelay:1500, minDist:2.5, maxDist:7, predictive:true, fuse:800, speed:0.035}
 };
 
 let ACTIVE = CONFIG.pursuit;
-let DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:0,
-            cursorVel:{x:0,y:0},tracking:0,anticip:0};
+let DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:0,cursorVel:{x:0,y:0},tracking:0,anticip:0};
 let isRunning = false, isVR = false, synth = null, trails = [];
 let nodPrompt = document.getElementById('nod-prompt');
+let spawnedInVR = false; // Флаг: были ли шары созданы в VR
 
 /* ---------- DOM ---------- */
 const $ = s => document.querySelector(s);
@@ -105,31 +101,27 @@ const hitEl   = $('#targets-hit');
 const modeSel = $('#training-mode');
 const startBtn= $('#start-training');
 const vrBtn   = $('#vr-stereo-toggle');
-const msg     = $('.point-message');
-const instr   = $('.instructions');
 
-/* ---------- AUDIO ---------- */
+/* ---------- AUDIO & HAPTIC ---------- */
 function initAudio() {
     if (synth) return;
     synth = new Tone.Synth({oscillator:{type:"sine"}}).toDestination();
     window.success = () => synth.triggerAttackRelease(["C5","E5","G5"], "16n");
     window.focus   = q => synth.triggerAttackRelease(Tone.Frequency(60 + Math.floor(q/5), "midi").toFrequency(), "32n");
 }
-
-/* ---------- HAPTIC ---------- */
 function hapticPulse() {
     const pad = navigator.getGamepads?.()[0];
     if (pad?.hapticActuators?.[0]) pad.hapticActuators[0].pulse(0.8, 100);
 }
 
-/* ---------- CREATE SPHERE (VR-READY) ---------- */
+/* ---------- CREATE SPHERE (VR-SAFE) ---------- */
 function createSphere(finalPos, color = '#667eea') {
     const el = document.createElement('a-entity');
-    el.setAttribute('position', '0 1.6 0'); // старт в центре
+    el.setAttribute('position', '0 1.6 0');
     el.setAttribute('class', 'hotspot');
     el.setAttribute('geometry', {
         primitive: 'sphere',
-        radius: /Mobi|Android|iPhone/i.test(navigator.userAgent) ? 0.3 : 0.2,
+        radius: 0.25,
         segmentsWidth: 32,
         segmentsHeight: 32
     });
@@ -162,7 +154,7 @@ function createSphere(finalPos, color = '#667eea') {
         trail = document.createElement('a-entity');
         trail.setAttribute('line', 'color:#764ba2;opacity:0.4');
         trailCon.appendChild(trail);
-        trails.push({el: trail, points: []});
+        trails.push({el: trail});
     }
 
     // Взаимодействие
@@ -170,10 +162,7 @@ function createSphere(finalPos, color = '#667eea') {
     el.addEventListener('mouseenter', () => {
         focusStart = Date.now();
         ring.setAttribute('visible', true);
-        ring.setAttribute('animation', {
-            property: 'geometry.thetaLength',
-            from: 0, to: 360, dur: ACTIVE.fuse, easing: 'linear'
-        });
+        ring.setAttribute('animation', {property: 'geometry.thetaLength', from: 0, to: 360, dur: ACTIVE.fuse, easing: 'linear'});
     });
     el.addEventListener('mouseleave', () => {
         ring.setAttribute('visible', false);
@@ -199,8 +188,7 @@ function createSphere(finalPos, color = '#667eea') {
         hitEl.textContent = ++DATA.hits;
 
         el.setAttribute('animation__scale', {property: 'scale', to: '0 0 0', dur: 300, easing: 'easeInQuad'});
-        setTimeout(() => { hotspots.removeChild(el); }, 350);
-        if (trail) trailCon.removeChild(trail);
+        setTimeout(() => { hotspots.removeChild(el); if (trail) trailCon.removeChild(trail); }, 350);
         setTimeout(() => spawnOne(), ACTIVE.spawnDelay);
     });
 
@@ -217,13 +205,12 @@ function createSphere(finalPos, color = '#667eea') {
             el.setAttribute('position', {x, y: finalPos.y, z});
             if (trail) {
                 const cur = `${x} ${finalPos.y} ${z}`;
-                const attr = trail.getAttribute('line');
-                trail.setAttribute('line', {start: attr.start || cur, end: cur});
+                trail.setAttribute('line', {start: cur, end: cur});
             }
         };
     }
 
-    // Анимация появления из центра
+    // Появление из центра
     el.setAttribute('animation__move', {
         property: 'position',
         to: `${finalPos.x} ${finalPos.y} ${finalPos.z}`,
@@ -260,7 +247,20 @@ function spawnOne() {
     createSphere(finalPos, color);
 }
 
-/* ---------- NOD TO CONTINUE ---------- */
+/* ---------- RESPAWN IN VR ---------- */
+function respawnAllInVR() {
+    if (!isVR || !isRunning || spawnedInVR) return;
+    console.log("Respawning spheres in VR...");
+    hotspots.innerHTML = '';
+    trailCon.innerHTML = '';
+    trails = [];
+    for (let i = 0; i < ACTIVE.num; i++) {
+        setTimeout(spawnOne, i * 400);
+    }
+    spawnedInVR = true;
+}
+
+/* ---------- NOD TO START ---------- */
 let nodState = 'waitDown';
 function startNodPrompt() {
     nodPrompt.style.display = 'block';
@@ -284,9 +284,8 @@ AFRAME.registerComponent('nod-listener', {
 
 /* ---------- SESSION ---------- */
 function startSession() {
-    DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:Date.now(),
-            cursorVel:{x:0,y:0},tracking:0,anticip:0};
-    isRunning = true;
+    DATA = {trials:0,hits:0,fast:0,slow:0,total:0,focus:0,predEff:0,startTime:Date.now(),cursorVel:{x:0,y:0},tracking:0,anticip:0};
+    isRunning = true; spawnedInVR = false;
     hotspots.innerHTML = ''; trailCon.innerHTML = ''; trails = [];
     prog.style.width = '0%';
     scoreEl.textContent = '0'; focusEl.textContent = '0%'; predEl.textContent = '0%';
@@ -300,35 +299,31 @@ function startSession() {
 }
 startBtn.onclick = () => { initAudio(); startSession(); };
 
-/* ---------- MODE ---------- */
+/* ---------- MODE & VR ---------- */
 modeSel.onchange = () => {
     const m = modeSel.value; ACTIVE = CONFIG[m];
-    let txt = `<h3>${m.charAt(0).toUpperCase() + m.slice(1)} Mode</h3><p>`;
-    if (m === 'prediction') txt += CONFIG.prediction.rule;
-    else if (m === 'coordination') txt += CONFIG.coordination.rule;
-    else txt += 'Track the moving spheres smoothly.';
-    txt += '</p>'; instr.innerHTML = txt;
+    $('.instructions').innerHTML = `<h3>${m.charAt(0).toUpperCase() + m.slice(1)}</h3><p>Track the glowing spheres.</p>`;
 };
-modeSel.dispatchEvent(new Event('change'));
 
-/* ---------- VR ---------- */
 vrBtn.onclick = async () => {
     isVR = !isVR;
     if (isVR) {
         await scene.enterVR();
         document.body.classList.add('vr-mode');
-        vrBtn.textContent = 'Exit VR Stereo Mode';
+        vrBtn.textContent = 'Exit VR';
         if (screen.orientation?.lock) screen.orientation.lock('landscape').catch(() => {});
+        setTimeout(respawnAllInVR, 500); // Дублируем шары после входа
     } else {
         await scene.exitVR();
         document.body.classList.remove('vr-mode');
         vrBtn.textContent = 'Enable VR Stereo Mode';
     }
 };
-scene.addEventListener('enter-vr', () => { isVR = true; document.body.classList.add('vr-mode'); });
+
+scene.addEventListener('enter-vr', () => { isVR = true; document.body.classList.add('vr-mode'); setTimeout(respawnAllInVR, 500); });
 scene.addEventListener('exit-vr', () => { isVR = false; document.body.classList.remove('vr-mode'); });
 
-/* ---------- ORIENTATION ---------- */
+/* ---------- ORIENTATION & BOUNDS ---------- */
 window.addEventListener('resize', checkOri);
 window.addEventListener('orientationchange', checkOri);
 function checkOri() {
@@ -342,11 +337,10 @@ function checkOri() {
 }
 setInterval(() => {
     const cam = document.querySelector('a-camera');
-    if (!cam) return;
+    if (!cam || !isRunning) return;
     const r = cam.getAttribute('rotation');
     if (Math.abs(r.y) > 45 || Math.abs(r.x) > 30) {
         $('.out-of-bounds-message').style.display = 'block';
-        if (navigator.vibrate) navigator.vibrate(100);
         DATA.fast *= 0.94;
     } else {
         $('.out-of-bounds-message').style.display = 'none';
