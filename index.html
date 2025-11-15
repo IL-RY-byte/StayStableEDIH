@@ -84,8 +84,8 @@
         
         <a-camera position="0 1.6 0" 
             look-controls="magicWindowTrackingEnabled: true" 
-            camera="near: 0.1; far: 20;"
-            raycaster="objects: .menu-button, .hotspot, .game-control-button; far: 20"
+            camera="near: 0.1; far: 1000;"
+            raycaster="objects: .menu-button, .hotspot, .game-control-button; far: 1000;"
             cursor="fuse: true; fuseTimeout: 2000">
             
             <a-entity
@@ -106,7 +106,6 @@
 
     <script>
         // *** КОНФІГУРАЦІЇ З ПАРАМЕТРАМИ ДЛЯ "ШІ" ***
-        // (Параметри dur, radius, і т.д. будуть змінюватись ШІ)
         const CONFIG = {
             pursuit: {
                 name: "Pursuit",
@@ -147,7 +146,6 @@
             }
         };
         
-        // Активна конфігурація (буде глибоко скопійована при виборі в меню)
         let ACTIVE_CONFIG = JSON.parse(JSON.stringify(CONFIG.prediction)); 
         let selectedModeButton = null;
         let confirmButton = null; 
@@ -166,7 +164,6 @@
             anticipationScore: 0, trackingAccuracy: 0, predictionEfficiency: 0
         };
         
-        // Масив для збору даних етапу (використовується ШІ)
         let currentStageData = [];
 
         let lastCursorPos = null;
@@ -175,7 +172,6 @@
         let synth;
         let isAudioInitialized = false;
         
-        // --- WebSocket (Логіка "лікаря") ВИДАЛЕНО ---
 
         async function initAudio() {
             if (isAudioInitialized) return;
@@ -192,7 +188,6 @@
             }
         }
 
-        // Main DOM elements
         const scene = document.querySelector('a-scene');
         const hotspotsContainer = document.querySelector('#hotspots');
         const pathIndicators = document.querySelector('#path-indicators');
@@ -270,7 +265,6 @@
         
         function initSession() {
             hideMenu();
-            createInGameExitButton(); 
             
             SESSION_STATE.currentModeKey = ACTIVE_CONFIG.name.toLowerCase();
             SESSION_STATE.currentStage = 0;
@@ -288,8 +282,9 @@
             lastCursorPos = null;
             isTrainingActive = true;
             
-            clearAllGameElements(false); 
-
+            clearAllGameElements(false); // *** ОНОВЛЕННЯ: Спочатку очищуємо
+            createInGameExitButton(); // *** ОНОВЛЕННЯ: Потім створюємо червону кнопку
+            
             updateLearningUI();
             updateScoreUI();
             
@@ -303,17 +298,11 @@
         }
         
 
-        // *** START: ЛОГІКА АДАПТИВНОЇ СКЛАДНОСТІ ("ШІ") ***
-
-        /**
-         * Обчислює середню продуктивність за етап (0-100)
-         */
         function calculateAveragePerformance(stageData) {
             if (stageData.length === 0) return 50; 
 
             let totalScore = 0;
             stageData.forEach(data => {
-                // Вага: 40% фокус, 30% трекінг, 30% передбачення
                 const repScore = (data.focus * 0.4) + (data.tracking * 0.3) + (data.anticipation * 0.3);
                 totalScore += repScore;
             });
@@ -321,9 +310,6 @@
             return totalScore / stageData.length;
         }
 
-        /**
-         * Змінює параметри НАСТУПНОГО етапу на основі продуктивності
-         */
         function adaptDifficulty(performanceScore, nextStageConfig) {
             if (!nextStageConfig) return; 
 
@@ -333,21 +319,18 @@
             console.log(`Performance Score: ${performanceScore.toFixed(2)}`);
 
             if (performanceScore < 40) {
-                // **Погана продуктивність -> Робимо легше**
                 console.log(`Action: Making next stage EASIER.`);
                 if (nextStageConfig.dur) nextStageConfig.dur *= 1.20; 
                 ACTIVE_CONFIG.baseFuseTimeout = Math.min(baseFuse * 1.25, 2500);
                 if (nextStageConfig.radius) nextStageConfig.radius *= 1.15; 
 
             } else if (performanceScore > 80) {
-                // **Дуже добра продуктивність -> Робимо складніше**
                 console.log(`Action: Making next stage HARDER.`);
                 if (nextStageConfig.dur) nextStageConfig.dur *= 0.80;
                 ACTIVE_CONFIG.baseFuseTimeout = Math.max(baseFuse * 0.80, 500);
                 if (nextStageConfig.radius) nextStageConfig.radius *= 0.90;
             
             } else {
-                // **Середня продуктивність -> Без змін**
                 console.log(`Action: Difficulty remains the same.`);
             }
 
@@ -355,53 +338,46 @@
             console.log(`---------------------`);
         }
         
-        // *** END: ЛОГІКА АДАПТИВНОЇ СКЛАДНОСТІ ("ШІ") ***
-
-
-        /**
-         * *** ІГРОВИЙ РУШІЙ (З АДАПТАЦІЄЮ) ***
-         */
         function spawnNextHotspot() {
             const modeConfig = ACTIVE_CONFIG; 
             
-            // 1. Перевіряємо, чи завершено етап
+            // *** ОНОВЛЕННЯ: Логіка завершення етапу/режиму ***
             if (SESSION_STATE.repsCompleted >= modeConfig.totalReps) {
                 
-                // *** "ШІ": АНАЛІЗУЄМО МИНУЛИЙ ЕТАП ***
                 const performanceScore = calculateAveragePerformance(currentStageData);
                 
-                // (Блок відправки даних лікарю видалено)
-
-                // Переходимо на наступний етап
                 SESSION_STATE.currentStage++; 
                 SESSION_STATE.repsCompleted = 0; 
 
-                // *** "ШІ": АДАПТУЄМО НАСТУПНИЙ ЕТАП ***
                 const nextStageConfig = modeConfig.stages[SESSION_STATE.currentStage];
                 adaptDifficulty(performanceScore, nextStageConfig);
                 
                 currentStageData = []; 
 
-                // 2. Перевіряємо, чи завершено весь режим
                 if (SESSION_STATE.currentStage >= modeConfig.stages.length) {
                     console.log("Mode complete!");
                     showMilestoneMessage("Mode Complete!"); 
-                    clearAllGameElements(true);
-                    createMainMenu(); 
+                    createContinueButton(); // Викликаємо "Continue" (посередині)
                     return;
                 } else {
                     console.log("Stage complete! Moving to next level.");
                     showMilestoneMessage("Stage Complete!");
-                    createNextStageButton(); 
+                    createNextStageButton(); // Викликаємо "Next Stage" (праворуч)
                     return; 
                 }
             }
 
-            // 3. Отримуємо конфігурацію поточного етапу
+            // *** ОНОВЛЕННЯ: Якщо це новий раунд, видаляємо зелені кнопки ***
+            const existingGreenButton = document.querySelector('#in-game-controls-container a-sphere[color="#4CAF50"]');
+            if (existingGreenButton && existingGreenButton.parentNode) {
+                existingGreenButton.parentNode.parentNode.removeChild(existingGreenButton.parentNode);
+            }
+
+            // ... (далі код створення хотспотів без змін) ...
+
             const currentStageConfig = modeConfig.stages[SESSION_STATE.currentStage];
             const currentStageName = currentStageConfig.name;
             
-            // *** "ШІ": Використовуємо динамічні параметри ***
             const radius = currentStageConfig.radius || 0.25;
             const duration = currentStageConfig.dur || 5000;
             const moveArea = modeConfig.moveArea || { x: 2.5, y: 1.2, z: -4 };
@@ -495,7 +471,7 @@
             hotspot.dataset.focusStartTime = 0;
             hotspot.dataset.focusQuality = 0;
 
-            const currentFuseTimeout = ACTIVE_CONFIG.baseFuseTimeout; // Використовуємо адаптивний час
+            const currentFuseTimeout = ACTIVE_CONFIG.baseFuseTimeout;
 
             hotspot.addEventListener('mouseenter', function() {
                 hotspot.dataset.focusStartTime = Date.now();
@@ -516,7 +492,6 @@
                 LEARNING_DATA.focusQuality = enhancedQuality;
                 if (isAudioInitialized) { window.focusSound(enhancedQuality); setTimeout(() => window.successSound(), 300); }
                 
-                // *** "ШІ": Зберігаємо дані про влучання для аналізу ***
                 currentStageData.push({
                     focus: enhancedQuality,
                     tracking: LEARNING_DATA.trackingAccuracy,
@@ -529,7 +504,6 @@
                 scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
 
                 SESSION_STATE.repsCompleted++;
-                // (Виклик sendRealtimeData() видалено)
 
                 this.setAttribute('animation__scale', { property: 'scale', dur: 300, to: '0 0 0', easing: 'easeInQuad' });
                 
@@ -621,13 +595,13 @@
             while (inGameControlsContainer.firstChild) { inGameControlsContainer.removeChild(inGameControlsContainer.firstChild); }
         }
         
+        // *** ОНОВЛЕННЯ: Кнопка "Вихід" (червона, ліворуч) ***
         function createInGameExitButton() {
-            clearAllGameElements(false); 
             const exitBtn = document.createElement('a-entity');
-            exitBtn.setAttribute('position', '-2 1.6 -2');
+            exitBtn.setAttribute('position', '-2 1.6 -2'); // Ліворуч
             const exitSphere = document.createElement('a-sphere');
             exitSphere.setAttribute('radius', '0.2');
-            exitSphere.setAttribute('color', '#F44336');
+            exitSphere.setAttribute('color', '#F44336'); // Червоний
             exitSphere.setAttribute('class', 'game-control-button');
             const exitText = document.createElement('a-text');
             exitText.setAttribute('value', 'Exit');
@@ -644,24 +618,25 @@
             inGameControlsContainer.appendChild(exitBtn);
         }
 
+        // *** ОНОВЛЕННЯ: Кнопка "Next Stage" (зелена, праворуч) ***
         function createNextStageButton() {
             while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
             
             const nextBtn = document.createElement('a-entity');
-            nextBtn.setAttribute('position', '2 1.6 -2');
+            nextBtn.setAttribute('position', '2 1.6 -2'); // Праворуч
             const nextSphere = document.createElement('a-sphere');
             nextSphere.setAttribute('radius', '0.2');
-            nextSphere.setAttribute('color', '#4CAF50');
+            nextSphere.setAttribute('color', '#4CAF50'); // Зелений
             nextSphere.setAttribute('class', 'game-control-button');
             const nextText = document.createElement('a-text');
-            nextText.setAttribute('value', 'Next Level'); 
+            nextText.setAttribute('value', 'Next Stage'); 
             nextText.setAttribute('position', '0 0.3 0');
             nextText.setAttribute('align', 'center');
             nextText.setAttribute('width', '2');
             nextText.setAttribute('font', 'roboto'); 
             nextSphere.addEventListener('click', () => {
                 if(nextBtn.parentNode) {
-                    nextBtn.parentNode.removeChild(nextBtn);
+                    nextBtn.parentNode.removeChild(nextBtn); // Видаляємо *тільки себе*
                 }
                 spawnNextHotspot(); 
             });
@@ -670,6 +645,34 @@
             nextBtn.appendChild(nextText);
             inGameControlsContainer.appendChild(nextBtn);
         }
+
+        // *** НОВА ФУНКЦІЯ: Кнопка "Continue" (зелена, посередині) ***
+        function createContinueButton() {
+            // Очищуємо ВСЕ (включаючи червону кнопку "Exit")
+            clearAllGameElements(true); 
+            
+            const continueBtn = document.createElement('a-entity');
+            continueBtn.setAttribute('position', '0 1.6 -2'); // Посередині
+            const continueSphere = document.createElement('a-sphere');
+            continueSphere.setAttribute('radius', '0.2');
+            continueSphere.setAttribute('color', '#4CAF50'); // Зелений
+            continueSphere.setAttribute('class', 'game-control-button');
+            const continueText = document.createElement('a-text');
+            continueText.setAttribute('value', 'Continue'); 
+            continueText.setAttribute('position', '0 0.3 0');
+            continueText.setAttribute('align', 'center');
+            continueText.setAttribute('width', '2');
+            continueText.setAttribute('font', 'roboto'); 
+            continueSphere.addEventListener('click', () => {
+                clearAllGameElements(true); 
+                createMainMenu(); 
+            });
+            
+            continueBtn.appendChild(continueSphere);
+            continueBtn.appendChild(continueText);
+            inGameControlsContainer.appendChild(continueBtn);
+        }
+
 
         function createMainMenu() {
             while (menuContainer.firstChild) {
@@ -797,7 +800,6 @@
             });
             selectedModeButton = clickedButton;
             
-            // *** "ШІ": Ми робимо ГЛИБОКУ копію конфігурації ***
             ACTIVE_CONFIG = JSON.parse(JSON.stringify(CONFIG[mode]));
             
             SESSION_STATE.currentModeKey = mode;
@@ -844,7 +846,6 @@
                 
                 console.log("StartGame called via", event.type);
                 
-                // (Виклик connectWebSocket() видалено)
                 await initAudio(); 
                 initSession();
             };
@@ -886,7 +887,6 @@
         scene.addEventListener('loaded', () => {
             
             manualVRButton.addEventListener('click', async () => {
-                // (Виклик connectWebSocket() видалено)
                 await initAudio(); 
                 try {
                     await scene.enterVR();
@@ -902,8 +902,6 @@
             
             checkOrientation();
             createMainMenu();
-            
-            // (Блок підключення WebSocket для не-iOS видалено)
         });
     </script>
 </body>
