@@ -95,7 +95,7 @@
             </a-entity> 
         </a-camera>
 
-        <a-sky color="#f0e6ff"></a-sky>
+        <a-sky color="black"></a-sky>
         
         <a-entity id="hotspots"></a-entity>
         <a-entity id="path-indicators"></a-entity>
@@ -146,7 +146,6 @@
             }
         };
         
-        // Початкова активна конфігурація (буде глибоко скопійована при виборі в меню)
         let ACTIVE_CONFIG = JSON.parse(JSON.stringify(CONFIG.prediction)); 
         let selectedModeButton = null;
         let confirmButton = null; 
@@ -165,7 +164,6 @@
             anticipationScore: 0, trackingAccuracy: 0, predictionEfficiency: 0
         };
         
-        // Масив для збору даних етапу (використовується ШІ)
         let currentStageData = [];
 
         let lastCursorPos = null;
@@ -191,7 +189,6 @@
             }
         }
 
-        // Main DOM elements
         const scene = document.querySelector('a-scene');
         const hotspotsContainer = document.querySelector('#hotspots');
         const pathIndicators = document.querySelector('#path-indicators');
@@ -299,22 +296,15 @@
             cursorUpdateInterval = setInterval(updateCursorTracking, 50);
 
             spawnNextHotspot();
-            
-            // Виклик sendRealtimeData() видалено
         }
         
 
         // *** START: ЛОГІКА АДАПТИВНОЇ СКЛАДНОСТІ ("ШІ") ***
-
-        /**
-         * Обчислює середню продуктивність за етап (0-100)
-         */
         function calculateAveragePerformance(stageData) {
-            if (stageData.length === 0) return 50; // Нейтральний бал
+            if (stageData.length === 0) return 50; 
 
             let totalScore = 0;
             stageData.forEach(data => {
-                // Вага: 40% фокус, 30% трекінг, 30% передбачення
                 const repScore = (data.focus * 0.4) + (data.tracking * 0.3) + (data.anticipation * 0.3);
                 totalScore += repScore;
             });
@@ -322,9 +312,6 @@
             return totalScore / stageData.length;
         }
 
-        /**
-         * Змінює параметри НАСТУПНОГО етапу на основі продуктивності
-         */
         function adaptDifficulty(performanceScore, nextStageConfig) {
             if (!nextStageConfig) return; 
 
@@ -334,77 +321,62 @@
             console.log(`Performance Score: ${performanceScore.toFixed(2)}`);
 
             if (performanceScore < 40) {
-                // **Погана продуктивність -> Робимо легше**
                 console.log(`Action: Making next stage EASIER.`);
-                if (nextStageConfig.dur) nextStageConfig.dur *= 1.20; // Повільніше
-                ACTIVE_CONFIG.baseFuseTimeout = Math.min(baseFuse * 1.25, 2500); // Більше часу
-                if (nextStageConfig.radius) nextStageConfig.radius *= 1.15; // Більші цілі
+                if (nextStageConfig.dur) nextStageConfig.dur *= 1.20; 
+                ACTIVE_CONFIG.baseFuseTimeout = Math.min(baseFuse * 1.25, 2500);
+                if (nextStageConfig.radius) nextStageConfig.radius *= 1.15; 
 
             } else if (performanceScore > 80) {
-                // **Дуже добра продуктивність -> Робимо складніше**
                 console.log(`Action: Making next stage HARDER.`);
-                if (nextStageConfig.dur) nextStageConfig.dur *= 0.80; // Швидше
-                ACTIVE_CONFIG.baseFuseTimeout = Math.max(baseFuse * 0.80, 500); // Менше часу
-                if (nextStageConfig.radius) nextStageConfig.radius *= 0.90; // Менші цілі
+                if (nextStageConfig.dur) nextStageConfig.dur *= 0.80;
+                ACTIVE_CONFIG.baseFuseTimeout = Math.max(baseFuse * 0.80, 500);
+                if (nextStageConfig.radius) nextStageConfig.radius *= 0.90;
             
             } else {
-                // **Середня продуктивність -> Без змін**
                 console.log(`Action: Difficulty remains the same.`);
             }
 
             console.log(`New 'dur': ${nextStageConfig.dur}, New 'fuse': ${ACTIVE_CONFIG.baseFuseTimeout}, New 'radius': ${nextStageConfig.radius}`);
             console.log(`---------------------`);
         }
-        
         // *** END: ЛОГІКА АДАПТИВНОЇ СКЛАДНОСТІ ("ШІ") ***
-
-
-        /**
-         * *** ІГРОВИЙ РУШІЙ (З АДАПТАЦІЄЮ ТА НОВИМИ КНОПКАМИ) ***
-         */
+        
         function spawnNextHotspot() {
             const modeConfig = ACTIVE_CONFIG; 
             
-            // 1. Перевіряємо, чи завершено етап
             if (SESSION_STATE.repsCompleted >= modeConfig.totalReps) {
                 
-                // ШІ: АНАЛІЗУЄМО МИНУЛИЙ ЕТАП
                 const performanceScore = calculateAveragePerformance(currentStageData);
                 
                 SESSION_STATE.currentStage++; 
                 SESSION_STATE.repsCompleted = 0; 
 
-                // ШІ: АДАПТУЄМО НАСТУПНИЙ ЕТАП
                 const nextStageConfig = modeConfig.stages[SESSION_STATE.currentStage];
                 adaptDifficulty(performanceScore, nextStageConfig);
                 
                 currentStageData = []; 
 
-                // 2. Перевіряємо, чи завершено весь режим
                 if (SESSION_STATE.currentStage >= modeConfig.stages.length) {
                     console.log("Mode complete!");
                     showMilestoneMessage("Mode Complete!"); 
-                    createContinueButton(); // З'являється зелена кнопка "Continue" посередині
+                    createContinueButton(); // "Continue" (посередині)
                     return;
                 } else {
                     console.log("Stage complete! Moving to next level.");
                     showMilestoneMessage("Stage Complete!");
-                    createNextStageButton(); // З'являється зелена кнопка "Next Stage" праворуч
+                    createNextStageButton(); // "Next Stage" (праворуч)
                     return; 
                 }
             }
 
-            // 3. Якщо це новий раунд, видаляємо старі зелені кнопки
             const existingGreenButton = document.querySelector('#in-game-controls-container a-sphere[color="#4CAF50"]');
             if (existingGreenButton && existingGreenButton.parentNode) {
                 existingGreenButton.parentNode.parentNode.removeChild(existingGreenButton.parentNode);
             }
 
-            // 4. Отримуємо конфігурацію поточного етапу
             const currentStageConfig = modeConfig.stages[SESSION_STATE.currentStage];
             const currentStageName = currentStageConfig.name;
             
-            // ШІ: Використовуємо динамічні параметри
             const radius = currentStageConfig.radius || 0.25;
             const duration = currentStageConfig.dur || 5000;
             const moveArea = modeConfig.moveArea || { x: 2.5, y: 1.2, z: -4 };
@@ -498,7 +470,7 @@
             hotspot.dataset.focusStartTime = 0;
             hotspot.dataset.focusQuality = 0;
 
-            const currentFuseTimeout = ACTIVE_CONFIG.baseFuseTimeout; // Використовуємо адаптивний час
+            const currentFuseTimeout = ACTIVE_CONFIG.baseFuseTimeout;
 
             hotspot.addEventListener('mouseenter', function() {
                 hotspot.dataset.focusStartTime = Date.now();
@@ -519,7 +491,6 @@
                 LEARNING_DATA.focusQuality = enhancedQuality;
                 if (isAudioInitialized) { window.focusSound(enhancedQuality); setTimeout(() => window.successSound(), 300); }
                 
-                // ШІ: Зберігаємо дані про влучання для аналізу
                 currentStageData.push({
                     focus: enhancedQuality,
                     tracking: LEARNING_DATA.trackingAccuracy,
@@ -532,7 +503,6 @@
                 scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
 
                 SESSION_STATE.repsCompleted++;
-                // Виклик sendRealtimeData() видалено
 
                 this.setAttribute('animation__scale', { property: 'scale', dur: 300, to: '0 0 0', easing: 'easeInQuad' });
                 
@@ -624,10 +594,10 @@
             while (inGameControlsContainer.firstChild) { inGameControlsContainer.removeChild(inGameControlsContainer.firstChild); }
         }
         
-        // *** Кнопка "Вихід" (червона, ліворуч) ***
         function createInGameExitButton() {
             const exitBtn = document.createElement('a-entity');
-            exitBtn.setAttribute('position', '-2 1.6 -2'); // Ліворуч
+            // *** ОНОВЛЕННЯ: Позиція зміщена далі ліворуч ***
+            exitBtn.setAttribute('position', '-2.5 1.6 -2'); 
             const exitSphere = document.createElement('a-sphere');
             exitSphere.setAttribute('radius', '0.2');
             exitSphere.setAttribute('color', '#F44336'); // Червоний
@@ -637,7 +607,7 @@
             exitText.setAttribute('position', '0 0.3 0');
             exitText.setAttribute('align', 'center');
             exitText.setAttribute('width', '2');
-            exitText.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            exitText.setAttribute('font', 'roboto'); // Стандартний шрифт
             exitSphere.addEventListener('click', () => {
                 clearAllGameElements(true);
                 createMainMenu(); 
@@ -647,12 +617,12 @@
             inGameControlsContainer.appendChild(exitBtn);
         }
 
-        // *** Кнопка "Next Stage" (зелена, праворуч) ***
         function createNextStageButton() {
             while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
             
             const nextBtn = document.createElement('a-entity');
-            nextBtn.setAttribute('position', '2 1.6 -2'); // Праворуч
+            // *** ОНОВЛЕННЯ: Позиція зміщена далі праворуч ***
+            nextBtn.setAttribute('position', '2.5 1.6 -2'); 
             const nextSphere = document.createElement('a-sphere');
             nextSphere.setAttribute('radius', '0.2');
             nextSphere.setAttribute('color', '#4CAF50'); // Зелений
@@ -662,10 +632,10 @@
             nextText.setAttribute('position', '0 0.3 0');
             nextText.setAttribute('align', 'center');
             nextText.setAttribute('width', '2');
-            nextText.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            nextText.setAttribute('font', 'roboto'); // Стандартний шрифт
             nextSphere.addEventListener('click', () => {
                 if(nextBtn.parentNode) {
-                    nextBtn.parentNode.removeChild(nextBtn); // Видаляємо *тільки себе*
+                    nextBtn.parentNode.removeChild(nextBtn); 
                 }
                 spawnNextHotspot(); 
             });
@@ -675,9 +645,7 @@
             inGameControlsContainer.appendChild(nextBtn);
         }
 
-        // *** Кнопка "Continue" (зелена, посередині) ***
         function createContinueButton() {
-            // Очищуємо ВСЕ (включаючи червону кнопку "Exit")
             clearAllGameElements(true); 
             
             const continueBtn = document.createElement('a-entity');
@@ -691,7 +659,7 @@
             continueText.setAttribute('position', '0 0.3 0');
             continueText.setAttribute('align', 'center');
             continueText.setAttribute('width', '2');
-            continueText.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            continueText.setAttribute('font', 'roboto'); // Стандартний шрифт
             continueSphere.addEventListener('click', () => {
                 clearAllGameElements(true); 
                 createMainMenu(); 
@@ -720,7 +688,7 @@
             title.setAttribute('align', 'center');
             title.setAttribute('width', '4');
             title.setAttribute('color', '#FFFFFF');
-            title.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            title.setAttribute('font', 'roboto'); // Стандартний шрифт
             menuContainer.appendChild(title);
             
             const modeTitle = document.createElement('a-text');
@@ -729,7 +697,7 @@
             modeTitle.setAttribute('align', 'left');
             modeTitle.setAttribute('width', '3');
             modeTitle.setAttribute('color', '#DDDDDD');
-            modeTitle.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            modeTitle.setAttribute('font', 'roboto'); // Стандартний шрифт
             menuContainer.appendChild(modeTitle);
             
             const pursuitBtn = createMenuButton_Sphere({ text: 'Pursuit', position: '-1 0.2 0', mode: 'pursuit' });
@@ -762,7 +730,7 @@
             label.setAttribute('align', 'center');
             label.setAttribute('width', width * 2);
             label.setAttribute('color', '#FFFFFF');
-            label.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            label.setAttribute('font', 'roboto'); // Стандартний шрифт
             const detailText = document.createElement('a-text');
             detailText.setAttribute('value', details);
             detailText.setAttribute('position', `0 -${height / 1.5} 0.01`);
@@ -770,7 +738,7 @@
             detailText.setAttribute('width', width * 1.5);
             detailText.setAttribute('color', '#DDDDDD');
             detailText.setAttribute('visible', 'false');
-            detailText.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            detailText.setAttribute('font', 'roboto'); // Стандартний шрифт
             button.detailText = detailText;
             plane.addEventListener('mouseenter', () => {
                 plane.setAttribute('color', '#FFFFFF');
@@ -803,7 +771,7 @@
             label.setAttribute('position', `0 ${radius + 0.1} 0`);
             label.setAttribute('align', 'center');
             label.setAttribute('width', '2');
-            label.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            label.setAttribute('font', 'roboto'); // Стандартний шрифт
             sphere.addEventListener('mouseenter', () => sphere.setAttribute('scale', '1.2 1.2 1.2'));
             sphere.addEventListener('mouseleave', () => sphere.setAttribute('scale', '1 1 1'));
             sphere.addEventListener('click', () => {
@@ -829,7 +797,6 @@
             });
             selectedModeButton = clickedButton;
             
-            // ШІ: Ми робимо ГЛИБОКУ копію конфігурації
             ACTIVE_CONFIG = JSON.parse(JSON.stringify(CONFIG[mode]));
             
             SESSION_STATE.currentModeKey = mode;
@@ -864,7 +831,7 @@
             text.setAttribute('position', '0 0.15 0'); 
             text.setAttribute('align', 'center');
             text.setAttribute('width', 2);
-            text.setAttribute('font', 'roboto'); // *** ОНОВЛЕННЯ: Стандартний шрифт ***
+            text.setAttribute('font', 'roboto'); // Стандартний шрифт
             let gameHasStarted = false;
             
             const startGame = async (event) => {
@@ -876,7 +843,6 @@
                 
                 console.log("StartGame called via", event.type);
                 
-                // Виклик connectWebSocket() видалено
                 await initAudio(); 
                 initSession();
             };
@@ -918,7 +884,6 @@
         scene.addEventListener('loaded', () => {
             
             manualVRButton.addEventListener('click', async () => {
-                // Виклик connectWebSocket() видалено
                 await initAudio(); 
                 try {
                     await scene.enterVR();
@@ -934,8 +899,6 @@
             
             checkOrientation();
             createMainMenu();
-            
-            // Блок підключення WebSocket для не-iOS видалено
         });
     </script>
 </body>
