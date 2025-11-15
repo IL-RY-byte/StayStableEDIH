@@ -3,9 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>StayStable - Cerebellar Rehabilitation VR</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
+    
     <style>
         body {
             margin: 0;
@@ -13,8 +16,6 @@
             font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        
-        /* 2D UI (в основном для не-VR режима) */
         .crosshair {
             position: fixed;
             top: 50%;
@@ -34,100 +35,129 @@
         .progress-bar { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); width: 300px; height: 20px; background: rgba(255, 255, 255, 0.2); border-radius: 10px; overflow: hidden; z-index: 999; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
         .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.5s; }
         .session-stats { position: fixed; bottom: 20px; right: 20px; background: rgba(118, 75, 162, 0.9); color: white; padding: 15px; border-radius: 10px; z-index: 999; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        
-        /* Скрываем старые 2D-элементы */
-        .instructions, .mode-selector {
-            display: none !important;
-        }
-
-        /* Классы для кнопок VR */
-        .menu-button, .game-control-button { 
-            cursor: pointer; 
-        }
-
-        /* Hide UI elements in VR mode */
+        .instructions, .mode-selector { display: none !important; }
+        .menu-button, .game-control-button { cursor: pointer; }
         body.vr-mode .data-panel,
         body.vr-mode .session-stats,
-        body.vr-mode .progress-bar {
-            display: none !important;
-        }
+        body.vr-mode .progress-bar { display: none !important; }
         body.vr-mode .crosshair { display: block !important; }
+        
+        #manual-vr-button {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 25px;
+            background: #007AFF;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            z-index: 10001;
+            cursor: pointer;
+        }
+        body.vr-mode #manual-vr-button {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="orientation-message" style="display: none;"></div>
-
     <div class="crosshair"></div>
-    
     <div class="data-panel">
         <div>Score: <span id="score">0</span></div>
         <div>Focus quality: <span id="focus-quality">0%</span></div>
         <div>Prediction: <span id="learning-rate">0%</span></div>
     </div>
-
-    <div class="progress-bar">
-        <div class="progress-fill"></div>
-    </div>
-
+    <div class="progress-bar"><div class="progress-fill"></div></div>
     <div class="point-message" style="display: none;"></div>
     <div class="out-of-bounds-message"></div>
-    
     <div class="session-stats">
         <div>Session time: <span id="session-time">00:00</span></div>
         <div>Targets hit: <span id="targets-hit">0</span></div>
     </div>
     
-    <a-scene raycaster="objects: .menu-button, .hotspot, .game-control-button; far: 20" vr-mode-ui="enabled: true" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
+    <button id="manual-vr-button">Enter Fullscreen / VR</button>
+
+    <a-scene vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true" renderer="antialias: true;">
         
-        <a-camera position="0 1.6 0" look-controls="magicWindowTrackingEnabled: true" camera="near: 0.1; far: 20;">
-            <a-entity
+        <a-camera position="0 1.6 0" 
+            look-controls="magicWindowTrackingEnabled: true" 
+            camera="near: 0.1; far: 20;"
             raycaster="objects: .menu-button, .hotspot, .game-control-button; far: 20"
-            position="0 0 -1"
-            geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
-            material="color: white; shader: flat"
-            cursor="fuse: true; fuseTimeout: 2000"> 
-            </a-entity>
+            cursor="fuse: true; fuseTimeout: 2000">
+            
+            <a-entity
+                position="0 0 -1"
+                geometry="primitive: ring; radiusInner: 0.01; radiusOuter: 0.02"
+                material="color: white; shader: flat"> 
+            </a-entity> 
         </a-camera>
 
         <a-sky color="#f0e6ff"></a-sky>
         
         <a-entity id="hotspots"></a-entity>
         <a-entity id="path-indicators"></a-entity>
-        
         <a-entity id="menu-container" position="0 1.6 -2.5"></a-entity>
-        
         <a-entity id="in-game-controls-container"></a-entity>
         
     </a-scene>
 
     <script>
-        // Core settings
+        // *** КОНФІГУРАЦІЇ З ПАРАМЕТРАМИ ДЛЯ "ШІ" ***
+        // (Параметри dur, radius, і т.д. будуть змінюватись ШІ)
         const CONFIG = {
             pursuit: {
                 name: "Pursuit",
                 description: "Track moving targets.",
-                numHotspots: 5, spawnDelay: 2000, minDistance: 3, maxDistance: 6,
-                predictiveMode: false, fuseTimeout: 1000, moveSpeed: 0.02
+                baseFuseTimeout: 1000,
+                totalReps: 10,
+                minDistance: 3, 
+                maxDistance: 6,
+                stages: [
+                    { name: 'static_1', radius: 0.25 },
+                    { name: 'static_2', radius: 0.20 },
+                    { name: 'static_3', radius: 0.15 }
+                ]
             },
             prediction: {
                 name: "Prediction",
                 description: "Anticipate target paths.",
-                numHotspots: 3, spawnDelay: 3000, minDistance: 2, maxDistance: 5,
-                predictiveMode: true, fuseTimeout: 1500, moveSpeed: 0.03
+                baseFuseTimeout: 1500,
+                totalReps: 10,
+                moveArea: { x: 2.5, y: 1.2, z: -4 },
+                stages: [
+                    { name: 'horizontal', dur: 4000, radius: 0.25 },
+                    { name: 'vertical',   dur: 3000, radius: 0.25 },
+                    { name: 'diagonal',   dur: 4000, radius: 0.20 }
+                ]
             },
             coordination: {
                 name: "Coordination",
                 description: "Track multiple complex targets.",
-                numHotspots: 8, spawnDelay: 1500, minDistance: 2.5, maxDistance: 7,
-                predictiveMode: true, fuseTimeout: 800, moveSpeed: 0.04
+                baseFuseTimeout: 800,
+                totalReps: 10,
+                moveArea: { x: 2.5, y: 1.2, z: -4 },
+                stages: [
+                    { name: 'square',   dur: 8000, radius: 0.25 },
+                    { name: 'triangle', dur: 6000, radius: 0.20 },
+                    { name: 'circle',   dur: 5000, radius: 0.15 }
+                ]
             }
         };
         
-        let ACTIVE_CONFIG = CONFIG.prediction; // Начинаем с режима "Prediction"
-        let selectedModeButton = null; // Хранит выбранную кнопку режима
-        let confirmButton = null; // *** НОВОЕ: Хранит кнопку "Подтвердить" ***
+        // Активна конфігурація (буде глибоко скопійована при виборі в меню)
+        let ACTIVE_CONFIG = JSON.parse(JSON.stringify(CONFIG.prediction)); 
+        let selectedModeButton = null;
+        let confirmButton = null; 
         
-        // Learning data (без изменений)
+        let SESSION_STATE = {
+            currentModeKey: 'prediction',
+            currentStage: 0,
+            repsCompleted: 0
+        };
+        
         const LEARNING_DATA = {
             fastComponent: 0, slowComponent: 0, totalLearning: 0,
             decayRate: { fast: 0.15, slow: 0.04 },
@@ -135,21 +165,31 @@
             cursorHistory: [], cursorVelocity: { x: 0, y: 0, z: 0 },
             anticipationScore: 0, trackingAccuracy: 0, predictionEfficiency: 0
         };
+        
+        // Масив для збору даних етапу (використовується ШІ)
+        let currentStageData = [];
 
-        // ... (остальные переменные без изменений) ...
         let lastCursorPos = null;
         let cursorUpdateInterval = null;
         let isTrainingActive = false;
         let synth;
         let isAudioInitialized = false;
         
-        function initAudio() {
+        // --- WebSocket (Логіка "лікаря") ВИДАЛЕНО ---
+
+        async function initAudio() {
             if (isAudioInitialized) return;
-            synth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.4 } }).toDestination();
-            window.successSound = () => { synth.triggerAttackRelease("C5", "16n"); setTimeout(() => synth.triggerAttackRelease("E5", "16n"), 100); setTimeout(() => synth.triggerAttackRelease("G5", "16n"), 200); };
-            window.errorSound = () => { synth.triggerAttackRelease("A3", "16n"); setTimeout(() => synth.triggerAttackRelease("G3", "16n"), 150); };
-            window.focusSound = (quality) => { const note = 60 + Math.floor(quality / 5); const freq = Tone.Frequency(note, "midi").toFrequency(); synth.triggerAttackRelease(freq, "32n"); };
-            isAudioInitialized = true;
+            try {
+                await Tone.start();
+                console.log("Audio Context Started (iOS fix)");
+                synth = new Tone.Synth({ oscillator: { type: "sine" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.4 } }).toDestination();
+                window.successSound = () => { synth.triggerAttackRelease("C5", "16n"); setTimeout(() => synth.triggerAttackRelease("E5", "16n"), 100); setTimeout(() => synth.triggerAttackRelease("G5", "16n"), 200); };
+                window.errorSound = () => { synth.triggerAttackRelease("A3", "16n"); setTimeout(() => synth.triggerAttackRelease("G3", "16n"), 150); };
+                window.focusSound = (quality) => { const note = 60 + Math.floor(quality / 5); const freq = Tone.Frequency(note, "midi").toFrequency(); synth.triggerAttackRelease(freq, "32n"); };
+                isAudioInitialized = true;
+            } catch (e) {
+                console.error("Failed to initialize audio:", e);
+            }
         }
 
         // Main DOM elements
@@ -167,22 +207,20 @@
         const learningRateEl = document.getElementById('learning-rate');
         const sessionTimeEl = document.getElementById('session-time');
         const targetsHitEl = document.getElementById('targets-hit');
+        const manualVRButton = document.getElementById('manual-vr-button'); 
 
-        // Hotspots tracking
         let activeHotspots = [];
         let predictivePattern = [];
         let learningProgress = 0;
         let sessionTimer = null;
         let isVRMode = false;
         
-        // ... (функции 'updateCursorTracking', 'getTargetCursorDistance', 'predictCursorPosition', 'calculateTrackingMetrics' без изменений) ...
-        
         function updateCursorTracking() {
             if (!isTrainingActive) return;
             const camera = document.querySelector('a-camera');
             if (!camera) return;
             const cameraRotation = camera.getAttribute('rotation');
-            if (!cameraRotation) return; // Добавлена проверка
+            if (!cameraRotation) return; 
             const currentPos = { x: cameraRotation.y, y: cameraRotation.x, z: 0, timestamp: Date.now() };
             if (lastCursorPos) {
                 const dt = (currentPos.timestamp - lastCursorPos.timestamp) / 1000;
@@ -195,9 +233,9 @@
         }
         function getTargetCursorDistance(target) {
             const camera = document.querySelector('a-camera');
-            if (!camera) return {x:0,y:0,z:0}; // Добавлена проверка
+            if (!camera) return {x:0,y:0,z:0}; 
             const cameraRotation = camera.getAttribute('rotation');
-            if (!cameraRotation) return {x:0,y:0,z:0}; // Добавлена проверка
+            if (!cameraRotation) return {x:0,y:0,z:0}; 
             const targetPos = target.getAttribute('position');
             const dx = Math.atan2(targetPos.x, -targetPos.z) * (180 / Math.PI);
             const dy = Math.atan2(targetPos.y, -targetPos.z) * (180 / Math.PI);
@@ -209,7 +247,7 @@
             return { x: lastCursorPos.x + LEARNING_DATA.cursorVelocity.x * timeAhead, y: lastCursorPos.y + LEARNING_DATA.cursorVelocity.y * timeAhead };
         }
         function calculateTrackingMetrics() {
-            if (activeHotspots.length === 0) return;
+            if (activeHotspots.length === 0 || !isTrainingActive) return;
             let nearestTarget = null;
             let minDistance = Infinity;
             activeHotspots.forEach(target => {
@@ -229,15 +267,15 @@
             LEARNING_DATA.predictionEfficiency = (LEARNING_DATA.trackingAccuracy * 0.4) + (LEARNING_DATA.anticipationScore * 0.6);
             updateLearningUI();
         }
-
-        /**
-         * Запускает сессию
-         */
+        
         function initSession() {
-            // Скрываем меню
             hideMenu();
-            // Показываем игровые кнопки
-            createInGameControls();
+            createInGameExitButton(); 
+            
+            SESSION_STATE.currentModeKey = ACTIVE_CONFIG.name.toLowerCase();
+            SESSION_STATE.currentStage = 0;
+            SESSION_STATE.repsCompleted = 0;
+            currentStageData = []; 
             
             LEARNING_DATA.sessionStartTime = Date.now();
             LEARNING_DATA.trials = 0;
@@ -246,21 +284,12 @@
             LEARNING_DATA.slowComponent = 0;
             LEARNING_DATA.totalLearning = 0;
             LEARNING_DATA.focusQuality = 0;
-            LEARNING_DATA.cursorHistory = [];
-            LEARNING_DATA.cursorVelocity = { x: 0, y: 0, z: 0 };
-            LEARNING_DATA.anticipationScore = 0;
-            LEARNING_DATA.trackingAccuracy = 0;
-            LEARNING_DATA.predictionEfficiency = 0;
             
             lastCursorPos = null;
             isTrainingActive = true;
             
-            // Очистка контейнеров (уже есть в clearAll, но пусть будет)
-            while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
-            while (pathIndicators.firstChild) { pathIndicators.removeChild(pathIndicators.firstChild); }
-            
-            activeHotspots = [];
-            
+            clearAllGameElements(false); 
+
             updateLearningUI();
             updateScoreUI();
             
@@ -269,81 +298,209 @@
             
             if (cursorUpdateInterval) clearInterval(cursorUpdateInterval);
             cursorUpdateInterval = setInterval(updateCursorTracking, 50);
-            
-            if (ACTIVE_CONFIG.predictiveMode) {
-                generatePredictivePattern();
-            }
-            
-            for (let i = 0; i < ACTIVE_CONFIG.numHotspots; i++) {
-                setTimeout(() => createHotspot(), i * 500);
-            }
-            
-            document.addEventListener('click', initAudio, { once: true });
+
+            spawnNextHotspot();
         }
         
-        // ... (функции 'generatePredictivePattern', 'visualizePredictivePattern', 'createHotspot' без изменений) ...
-        
-        function generatePredictivePattern() {
-            predictivePattern = [];
-            const patternLength = 8;
-            const radius = 3;
-            for (let i = 0; i < patternLength; i++) {
-                const angle = (i / patternLength) * Math.PI * 2;
-                const x = radius * Math.sin(angle * 2) * 0.7;
-                const y = radius * Math.sin(angle) * 0.3;
-                const z = -radius * 1.5 - 0.1; // Z-отступ
-                predictivePattern.push({ x, y, z });
-            }
-            if (ACTIVE_CONFIG.predictiveMode) {
-                visualizePredictivePattern();
-            }
-        }
-        function visualizePredictivePattern() {
-            predictivePattern.forEach((pos, index) => {
-                const indicator = document.createElement('a-entity');
-                indicator.setAttribute('geometry', { primitive: 'ring', radiusInner: 0.05, radiusOuter: 0.08 });
-                indicator.setAttribute('material', { color: '#667eea', opacity: 0.3, transparent: true, shader: 'flat', depthTest: true, depthWrite: false });
-                indicator.setAttribute('position', `${pos.x} ${pos.y} ${pos.z}`);
-                if (index > 0) {
-                    const prevPos = predictivePattern[index - 1];
-                    const line = document.createElement('a-entity');
-                    line.setAttribute('line', { start: `${prevPos.x} ${prevPos.y} ${prevPos.z}`, end: `${pos.x} ${pos.y} ${pos.z}`, color: '#764ba2', opacity: 0.2 });
-                    line.setAttribute('material', { shader: 'flat', color: '#764ba2', opacity: 0.2, transparent: true, depthTest: true, depthWrite: false });
-                    pathIndicators.appendChild(line);
-                }
-                pathIndicators.appendChild(indicator);
+
+        // *** START: ЛОГІКА АДАПТИВНОЇ СКЛАДНОСТІ ("ШІ") ***
+
+        /**
+         * Обчислює середню продуктивність за етап (0-100)
+         */
+        function calculateAveragePerformance(stageData) {
+            if (stageData.length === 0) return 50; 
+
+            let totalScore = 0;
+            stageData.forEach(data => {
+                // Вага: 40% фокус, 30% трекінг, 30% передбачення
+                const repScore = (data.focus * 0.4) + (data.tracking * 0.3) + (data.anticipation * 0.3);
+                totalScore += repScore;
             });
+            
+            return totalScore / stageData.length;
         }
-        function createHotspot() {
-            const hotspot = document.createElement('a-entity');
-            let position;
-            if (ACTIVE_CONFIG.predictiveMode && predictivePattern.length > 0) {
-                const patternIndex = Math.floor(Math.random() * predictivePattern.length);
-                position = predictivePattern[patternIndex]; 
-                position = {x: position.x, y: position.y, z: position.z + 0.1}; // Повертаємо ближче
+
+        /**
+         * Змінює параметри НАСТУПНОГО етапу на основі продуктивності
+         */
+        function adaptDifficulty(performanceScore, nextStageConfig) {
+            if (!nextStageConfig) return; 
+
+            const baseFuse = ACTIVE_CONFIG.baseFuseTimeout;
+            
+            console.log(`--- AI ADAPTATION ---`);
+            console.log(`Performance Score: ${performanceScore.toFixed(2)}`);
+
+            if (performanceScore < 40) {
+                // **Погана продуктивність -> Робимо легше**
+                console.log(`Action: Making next stage EASIER.`);
+                if (nextStageConfig.dur) nextStageConfig.dur *= 1.20; 
+                ACTIVE_CONFIG.baseFuseTimeout = Math.min(baseFuse * 1.25, 2500);
+                if (nextStageConfig.radius) nextStageConfig.radius *= 1.15; 
+
+            } else if (performanceScore > 80) {
+                // **Дуже добра продуктивність -> Робимо складніше**
+                console.log(`Action: Making next stage HARDER.`);
+                if (nextStageConfig.dur) nextStageConfig.dur *= 0.80;
+                ACTIVE_CONFIG.baseFuseTimeout = Math.max(baseFuse * 0.80, 500);
+                if (nextStageConfig.radius) nextStageConfig.radius *= 0.90;
+            
             } else {
-                const x = (Math.random() * 3) - 1.5;
-                const y = (Math.random() * 2) - 0.5;
-                const z = -(Math.random() * (ACTIVE_CONFIG.maxDistance - ACTIVE_CONFIG.minDistance) + ACTIVE_CONFIG.minDistance);
-                position = { x, y, z };
+                // **Середня продуктивність -> Без змін**
+                console.log(`Action: Difficulty remains the same.`);
             }
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            const radius = isMobile ? 0.35 : 0.25;
-            hotspot.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+
+            console.log(`New 'dur': ${nextStageConfig.dur}, New 'fuse': ${ACTIVE_CONFIG.baseFuseTimeout}, New 'radius': ${nextStageConfig.radius}`);
+            console.log(`---------------------`);
+        }
+        
+        // *** END: ЛОГІКА АДАПТИВНОЇ СКЛАДНОСТІ ("ШІ") ***
+
+
+        /**
+         * *** ІГРОВИЙ РУШІЙ (З АДАПТАЦІЄЮ) ***
+         */
+        function spawnNextHotspot() {
+            const modeConfig = ACTIVE_CONFIG; 
+            
+            // 1. Перевіряємо, чи завершено етап
+            if (SESSION_STATE.repsCompleted >= modeConfig.totalReps) {
+                
+                // *** "ШІ": АНАЛІЗУЄМО МИНУЛИЙ ЕТАП ***
+                const performanceScore = calculateAveragePerformance(currentStageData);
+                
+                // (Блок відправки даних лікарю видалено)
+
+                // Переходимо на наступний етап
+                SESSION_STATE.currentStage++; 
+                SESSION_STATE.repsCompleted = 0; 
+
+                // *** "ШІ": АДАПТУЄМО НАСТУПНИЙ ЕТАП ***
+                const nextStageConfig = modeConfig.stages[SESSION_STATE.currentStage];
+                adaptDifficulty(performanceScore, nextStageConfig);
+                
+                currentStageData = []; 
+
+                // 2. Перевіряємо, чи завершено весь режим
+                if (SESSION_STATE.currentStage >= modeConfig.stages.length) {
+                    console.log("Mode complete!");
+                    showMilestoneMessage("Mode Complete!"); 
+                    clearAllGameElements(true);
+                    createMainMenu(); 
+                    return;
+                } else {
+                    console.log("Stage complete! Moving to next level.");
+                    showMilestoneMessage("Stage Complete!");
+                    createNextStageButton(); 
+                    return; 
+                }
+            }
+
+            // 3. Отримуємо конфігурацію поточного етапу
+            const currentStageConfig = modeConfig.stages[SESSION_STATE.currentStage];
+            const currentStageName = currentStageConfig.name;
+            
+            // *** "ШІ": Використовуємо динамічні параметри ***
+            const radius = currentStageConfig.radius || 0.25;
+            const duration = currentStageConfig.dur || 5000;
+            const moveArea = modeConfig.moveArea || { x: 2.5, y: 1.2, z: -4 };
+            
+            const hotspot = document.createElement('a-entity');
+            let animationAttributes = {};
+            let startPosition = '0 1.6 -4'; 
+            let circleParent = null;
+            
+            switch (currentStageName) {
+                case 'static_1':
+                case 'static_2':
+                case 'static_3':
+                    const x = (Math.random() * 3) - 1.5; 
+                    const y = (Math.random() * 2) - 0.5 + 1.6; 
+                    const z = -(Math.random() * (modeConfig.maxDistance - modeConfig.minDistance) + modeConfig.minDistance);
+                    startPosition = `${x} ${y} ${z}`;
+                    break;
+                case 'horizontal':
+                    startPosition = `-${moveArea.x} ${Math.random() * moveArea.y + 1} ${moveArea.z}`;
+                    animationAttributes = { property: 'position', to: `${moveArea.x} ${startPosition.split(' ')[1]} ${moveArea.z}`, dur: duration, easing: 'linear' };
+                    break;
+                case 'vertical':
+                    startPosition = `${(Math.random() * moveArea.x*2) - moveArea.x} 1 ${moveArea.z}`;
+                    animationAttributes = { property: 'position', to: `${startPosition.split(' ')[0]} ${moveArea.y + 1} ${moveArea.z}`, dur: duration, easing: 'linear' };
+                    break;
+                case 'diagonal':
+                    startPosition = `-${moveArea.x} 1 ${moveArea.z}`;
+                    animationAttributes = { property: 'position', to: `${moveArea.x} ${moveArea.y + 1} ${moveArea.z}`, dur: duration, easing: 'linear' };
+                    break;
+                case 'square':
+                    startPosition = `-${moveArea.x/2} 1.3 ${moveArea.z}`;
+                    animationAttributes = {
+                        property: 'position',
+                        path: [
+                            `-${moveArea.x/2} 1.3 ${moveArea.z}`,
+                            `${moveArea.x/2} 1.3 ${moveArea.z}`,
+                            `${moveArea.x/2} ${moveArea.y + 0.7} ${moveArea.z}`,
+                            `-${moveArea.x/2} ${moveArea.y + 0.7} ${moveArea.z}`,
+                            `-${moveArea.x/2} 1.3 ${moveArea.z}`
+                        ].join(','),
+                        dur: duration, 
+                        easing: 'linear',
+                        loop: true
+                    };
+                    break;
+                case 'triangle':
+                    startPosition = `0 1 ${moveArea.z}`;
+                    animationAttributes = {
+                        property: 'position',
+                        path: [
+                            `0 1 ${moveArea.z}`,
+                            `${moveArea.x/2} ${moveArea.y + 1} ${moveArea.z}`,
+                            `-${moveArea.x/2} ${moveArea.y + 1} ${moveArea.z}`,
+                            `0 1 ${moveArea.z}`
+                        ].join(','),
+                        dur: duration,
+                        easing: 'linear',
+                        loop: true
+                    };
+                    break;
+                case 'circle':
+                    circleParent = document.createElement('a-entity'); 
+                    circleParent.setAttribute('position', `0 1.6 ${moveArea.z}`);
+                    hotspot.setAttribute('position', `${moveArea.x / 2} 0 0`); 
+                    circleParent.setAttribute('animation__rotation', {
+                        property: 'rotation',
+                        to: '0 360 0',
+                        dur: duration,
+                        easing: 'linear',
+                        loop: true
+                    });
+                    break;
+            }
+
+            hotspot.setAttribute('position', startPosition);
             hotspot.setAttribute('geometry', { primitive: 'sphere', radius: radius });
             hotspot.setAttribute('material', { shader: 'standard', color: '#667eea', emissive: '#764ba2', emissiveIntensity: 0.8 });
             hotspot.setAttribute('class', 'hotspot');
+            
+            if (Object.keys(animationAttributes).length > 0) {
+                hotspot.setAttribute('animation__move', animationAttributes);
+            }
+
             const ring = document.createElement('a-entity');
             ring.setAttribute('geometry', { primitive: 'ring', radiusInner: radius * 1.33, radiusOuter: radius * 1.67, thetaLength: 0 });
             ring.setAttribute('material', { color: '#FFFFFF', opacity: 0.8, transparent: true, side: 'double' });
             ring.setAttribute('visible', false);
             hotspot.appendChild(ring);
+
             hotspot.dataset.focusStartTime = 0;
             hotspot.dataset.focusQuality = 0;
+
+            const currentFuseTimeout = ACTIVE_CONFIG.baseFuseTimeout; // Використовуємо адаптивний час
+
             hotspot.addEventListener('mouseenter', function() {
                 hotspot.dataset.focusStartTime = Date.now();
                 ring.setAttribute('visible', true);
-                ring.setAttribute('animation__fill', { property: 'geometry.thetaLength', from: 0, to: 360, dur: ACTIVE_CONFIG.fuseTimeout, easing: 'linear' });
+                ring.setAttribute('animation__fill', { property: 'geometry.thetaLength', from: 0, to: 360, dur: currentFuseTimeout, easing: 'linear' });
             });
             hotspot.addEventListener('mouseleave', function() {
                 ring.setAttribute('visible', false);
@@ -351,33 +508,49 @@
                 ring.setAttribute('geometry', { primitive: 'ring', radiusInner: radius * 1.33, radiusOuter: radius * 1.67, thetaLength: 0 });
                 hotspot.dataset.focusQuality = 0;
             });
+
             hotspot.addEventListener('click', function() {
                 const focusDuration = Date.now() - parseInt(hotspot.dataset.focusStartTime);
-                const focusQuality = Math.min(100, (focusDuration / ACTIVE_CONFIG.fuseTimeout) * 100);
+                const focusQuality = Math.min(100, (focusDuration / currentFuseTimeout) * 100);
                 const enhancedQuality = (focusQuality * 0.4) + (LEARNING_DATA.trackingAccuracy * 0.3) + (LEARNING_DATA.anticipationScore * 0.3);
                 LEARNING_DATA.focusQuality = enhancedQuality;
                 if (isAudioInitialized) { window.focusSound(enhancedQuality); setTimeout(() => window.successSound(), 300); }
-                updateLearning(enhancedQuality);
-                this.setAttribute('animation__scale', { property: 'scale', dur: 500, to: '0 0 0', easing: 'easeInOutQuad' });
+                
+                // *** "ШІ": Зберігаємо дані про влучання для аналізу ***
+                currentStageData.push({
+                    focus: enhancedQuality,
+                    tracking: LEARNING_DATA.trackingAccuracy,
+                    anticipation: LEARNING_DATA.anticipationScore
+                });
+
+                updateLearning(enhancedQuality); 
+                LEARNING_DATA.targetsHit++;
+                targetsHitEl.textContent = LEARNING_DATA.targetsHit;
+                scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
+
+                SESSION_STATE.repsCompleted++;
+                // (Виклик sendRealtimeData() видалено)
+
+                this.setAttribute('animation__scale', { property: 'scale', dur: 300, to: '0 0 0', easing: 'easeInQuad' });
+                
+                const parentEl = this.parentNode;
+                const entityToRemove = (parentEl === hotspotsContainer) ? this : parentEl;
+
                 setTimeout(() => {
-                    const index = activeHotspots.indexOf(this);
-                    if (index > -1) activeHotspots.splice(index, 1);
-                    if (this.parentNode) { this.parentNode.removeChild(this); }
-                    setTimeout(createHotspot, ACTIVE_CONFIG.spawnDelay);
-                    LEARNING_DATA.targetsHit++;
-                    targetsHitEl.textContent = LEARNING_DATA.targetsHit;
-                    scoreEl.textContent = Math.floor(LEARNING_DATA.totalLearning);
-                    if (LEARNING_DATA.targetsHit % 10 === 0) { showMilestoneMessage(); }
+                    if (entityToRemove && entityToRemove.parentNode) {
+                        entityToRemove.parentNode.removeChild(entityToRemove); 
+                    }
+                    spawnNextHotspot(); 
                 }, 300);
             });
-            if (ACTIVE_CONFIG.predictiveMode) {
-                hotspot.setAttribute('animation__move', { property: 'position', dur: 5000 + Math.random() * 5000, easing: 'linear', loop: true, to: `${position.x + Math.random() - 0.5} ${position.y + Math.random() - 0.5} ${position.z}` });
-            }
-            hotspotsContainer.appendChild(hotspot);
-            activeHotspots.push(hotspot);
-        }
 
-        // ... (функции 'updateLearning', 'updateLearningUI', 'showMilestoneMessage', 'updateSessionTime', 'updateScoreUI', 'checkOrientation', 'checkOutOfBounds' без изменений) ...
+            if (currentStageName === 'circle' && circleParent) {
+                circleParent.appendChild(hotspot);
+                hotspotsContainer.appendChild(circleParent);
+            } else {
+                hotspotsContainer.appendChild(hotspot);
+            }
+        }
         
         function updateLearning(focusQuality) {
             LEARNING_DATA.trials++;
@@ -395,19 +568,22 @@
             const learningRate = LEARNING_DATA.trials > 1 ? Math.round(LEARNING_DATA.predictionEfficiency) : 0;
             learningRateEl.textContent = `${learningRate}%`;
         }
-        function showMilestoneMessage() {
-            let message;
-            if (LEARNING_DATA.targetsHit === 10) { message = "Initial learning phase complete! Your cerebellum is adapting."; }
-            else if (LEARNING_DATA.targetsHit === 25) { message = "Fast learning engaged! Your cerebellar cortex is showing activity."; }
-            else if (LEARNING_DATA.targetsHit === 50) { message = "Consolidation beginning! Memory transferring to cerebellar nuclei."; }
-            else if (LEARNING_DATA.targetsHit === 100) { message = "Excellent progress! Long-term motor learning pathways forming."; }
-            else { message = `${LEARNING_DATA.targetsHit} targets hit! Cerebellar learning is progressing.`; }
+        function showMilestoneMessage(customMessage = "") {
+            let message = customMessage;
+            if (!message) {
+                 if (LEARNING_DATA.targetsHit > 0 && LEARNING_DATA.targetsHit % 10 === 0) {
+                    message = `${LEARNING_DATA.targetsHit} targets hit! Keep going!`;
+                 } else {
+                     return; 
+                 }
+            }
             pointMessage.textContent = message;
             pointMessage.style.display = 'block';
             pointMessage.classList.remove('fade');
-            setTimeout(() => { pointMessage.classList.add('fade'); setTimeout(() => { pointMessage.style.display = 'none'; }, 500); }, 5000);
+            setTimeout(() => { pointMessage.classList.add('fade'); setTimeout(() => { pointMessage.style.display = 'none'; }, 500); }, 3000); 
         }
         function updateSessionTime() {
+            if (!isTrainingActive) return;
             const elapsedSec = Math.floor((Date.now() - LEARNING_DATA.sessionStartTime) / 1000);
             const minutes = Math.floor(elapsedSec / 60).toString().padStart(2, '0');
             const seconds = (elapsedSec % 60).toString().padStart(2, '0');
@@ -419,6 +595,7 @@
             else { orientationMessage.style.display = 'none'; if(scene) scene.play(); }
         }
         function checkOutOfBounds() {
+            if (!isTrainingActive) return; 
             const camera = document.querySelector('a-camera');
             if (!camera) return; 
             const cameraRotation = camera.getAttribute('rotation');
@@ -427,190 +604,133 @@
             const yawLimit = 45; const pitchLimit = 30;
             if (Math.abs(yaw) > yawLimit || Math.abs(pitch) > pitchLimit) {
                 outOfBoundsMessage.style.display = 'block';
+                outOfBoundsMessage.textContent = 'Please return to center position';
                 if (navigator.vibrate) { navigator.vibrate(200); }
                 if (LEARNING_DATA.fastComponent > 0) { LEARNING_DATA.fastComponent *= 0.95; updateLearningUI(); }
             } else { outOfBoundsMessage.style.display = 'none'; }
         }
 
-        // *** НОВЫЕ И ИЗМЕНЕННЫЕ ФУНКЦИИ ДЛЯ VR-МЕНЮ ***
-
-        /**
-         * Очищает все игровые элементы
-         */
-        function clearAllGameElements() {
-            isTrainingActive = false;
-            if (sessionTimer) clearInterval(sessionTimer);
-            if (cursorUpdateInterval) clearInterval(cursorUpdateInterval);
-
+        function clearAllGameElements(stopSession = true) {
+            if (stopSession) {
+                isTrainingActive = false;
+                if (sessionTimer) clearInterval(sessionTimer);
+                if (cursorUpdateInterval) clearInterval(cursorUpdateInterval);
+            }
             while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
             while (pathIndicators.firstChild) { pathIndicators.removeChild(pathIndicators.firstChild); }
             while (inGameControlsContainer.firstChild) { inGameControlsContainer.removeChild(inGameControlsContainer.firstChild); }
         }
-
-        /**
-         * Создает игровые кнопки (Выход / След. уровень)
-         */
-        function createInGameControls() {
-            clearAllGameElements(); // Очищаем на всякий случай
-
-            // Кнопка Выхода (красная, слева)
+        
+        function createInGameExitButton() {
+            clearAllGameElements(false); 
             const exitBtn = document.createElement('a-entity');
-            exitBtn.setAttribute('position', '-2 1.6 -2'); // Слева и чуть ближе
-            
+            exitBtn.setAttribute('position', '-2 1.6 -2');
             const exitSphere = document.createElement('a-sphere');
             exitSphere.setAttribute('radius', '0.2');
-            exitSphere.setAttribute('color', '#F44336'); // Красный
-            exitSphere.setAttribute('class', 'game-control-button'); // Новый класс
-            
+            exitSphere.setAttribute('color', '#F44336');
+            exitSphere.setAttribute('class', 'game-control-button');
             const exitText = document.createElement('a-text');
             exitText.setAttribute('value', 'Exit');
             exitText.setAttribute('position', '0 0.3 0');
             exitText.setAttribute('align', 'center');
             exitText.setAttribute('width', '2');
-
+            exitText.setAttribute('font', 'roboto'); 
             exitSphere.addEventListener('click', () => {
-                clearAllGameElements();
-                createMainMenu(); // Возвращаемся в главное меню
+                clearAllGameElements(true);
+                createMainMenu(); 
             });
-            
             exitBtn.appendChild(exitSphere);
             exitBtn.appendChild(exitText);
             inGameControlsContainer.appendChild(exitBtn);
+        }
 
-            // Кнопка "Следующий уровень" (зеленая, справа)
+        function createNextStageButton() {
+            while (hotspotsContainer.firstChild) { hotspotsContainer.removeChild(hotspotsContainer.firstChild); }
+            
             const nextBtn = document.createElement('a-entity');
-            nextBtn.setAttribute('position', '2 1.6 -2'); // Справа и чуть ближе
-
+            nextBtn.setAttribute('position', '2 1.6 -2');
             const nextSphere = document.createElement('a-sphere');
             nextSphere.setAttribute('radius', '0.2');
-            nextSphere.setAttribute('color', '#4CAF50'); // Зеленый
-            nextSphere.setAttribute('class', 'game-control-button'); // Новый класс
-
+            nextSphere.setAttribute('color', '#4CAF50');
+            nextSphere.setAttribute('class', 'game-control-button');
             const nextText = document.createElement('a-text');
-            nextText.setAttribute('value', 'Next Level');
+            nextText.setAttribute('value', 'Next Level'); 
             nextText.setAttribute('position', '0 0.3 0');
             nextText.setAttribute('align', 'center');
             nextText.setAttribute('width', '2');
-
+            nextText.setAttribute('font', 'roboto'); 
             nextSphere.addEventListener('click', () => {
-                // "Следующий уровень" пока просто перезапускает текущий
-                clearAllGameElements();
-                initSession();
+                if(nextBtn.parentNode) {
+                    nextBtn.parentNode.removeChild(nextBtn);
+                }
+                spawnNextHotspot(); 
             });
-
+            
             nextBtn.appendChild(nextSphere);
             nextBtn.appendChild(nextText);
             inGameControlsContainer.appendChild(nextBtn);
         }
 
-        /**
-         * *** ИЗМЕНЕНО: Создает новое VR-меню ***
-         */
         function createMainMenu() {
-            // Очищаем контейнер
             while (menuContainer.firstChild) {
                 menuContainer.removeChild(menuContainer.firstChild);
             }
             menuContainer.setAttribute('visible', true);
-
-            // *** НОВОЕ: Уничтожаем кнопку "Confirm", если она осталась ***
             if (confirmButton) {
                 if (confirmButton.parentNode) {
                     confirmButton.parentNode.removeChild(confirmButton);
                 }
                 confirmButton = null;
             }
-
-            // --- Заголовки ---
             const title = document.createElement('a-text');
             title.setAttribute('value', 'StayStable VR');
             title.setAttribute('position', '0 0.8 0');
             title.setAttribute('align', 'center');
             title.setAttribute('width', '4');
             title.setAttribute('color', '#FFFFFF');
+            title.setAttribute('font', 'roboto');
             menuContainer.appendChild(title);
-
+            
             const modeTitle = document.createElement('a-text');
             modeTitle.setAttribute('value', 'Select Mode:');
             modeTitle.setAttribute('position', '-1.1 0.5 0');
             modeTitle.setAttribute('align', 'left');
             modeTitle.setAttribute('width', '3');
             modeTitle.setAttribute('color', '#DDDDDD');
+            modeTitle.setAttribute('font', 'roboto');
             menuContainer.appendChild(modeTitle);
-
-            // --- Кнопки выбора режима (Сферы) ---
-            const pursuitBtn = createMenuButton_Sphere({
-                text: 'Pursuit',
-                position: '-1 0.2 0',
-                mode: 'pursuit'
-            });
+            
+            const pursuitBtn = createMenuButton_Sphere({ text: 'Pursuit', position: '-1 0.2 0', mode: 'pursuit' });
             menuContainer.appendChild(pursuitBtn);
-
-            const predictionBtn = createMenuButton_Sphere({
-                text: 'Prediction',
-                position: '0 0.2 0',
-                mode: 'prediction'
-            });
+            const predictionBtn = createMenuButton_Sphere({ text: 'Prediction', position: '0 0.2 0', mode: 'prediction' });
             menuContainer.appendChild(predictionBtn);
-
-            const coordBtn = createMenuButton_Sphere({
-                text: 'Coordination',
-                position: '1 0.2 0',
-                mode: 'coordination'
-            });
+            const coordBtn = createMenuButton_Sphere({ text: 'Coordination', position: '1 0.2 0', mode: 'coordination' });
             menuContainer.appendChild(coordBtn);
-
-            // Выбираем "Prediction" по умолчанию
-            selectMode(predictionBtn.querySelector('a-sphere'), 'prediction');
-
-            // --- Кнопки действий (2D Панели) ---
-            // *** Кнопка "Start" УДАЛЕНА ***
-
-            // *** ИЗМЕНЕНЫ ПОЗИЦИИ ***
-            const calibBtn = createMenuButton_Plane({
-                text: 'Calibration',
-                details: 'Recenter view and sensors.',
-                position: '-0.6 -0.4 0', // Сдвинуто
-                width: 1.0,
-                color: '#2196F3', // Синий
-                onClick: () => console.log("Calibration clicked")
-            });
+            
+            selectMode(predictionBtn.querySelector('a-sphere'), 'prediction'); 
+            
+            const calibBtn = createMenuButton_Plane({ text: 'Calibration', details: 'Recenter view and sensors.', position: '-0.6 -0.4 0', width: 1.0, color: '#2196F3', onClick: () => console.log("Calibration clicked") });
             menuContainer.appendChild(calibBtn);
-
-            const recBtn = createMenuButton_Plane({
-                text: 'Recommendations',
-                details: 'View tips for this exercise.',
-                position: '0.6 -0.4 0', // Сдвинуто
-                width: 1.0,
-                color: '#FF9800', // Оранжевый
-                onClick: () => console.log("Recommendations clicked")
-            });
+            const recBtn = createMenuButton_Plane({ text: 'Recommendations', details: 'View tips for this exercise.', position: '0.6 -0.4 0', width: 1.0, color: '#FF9800', onClick: () => console.log("Recommendations clicked") });
             menuContainer.appendChild(recBtn);
         }
-
-        /**
-         * Создает 2D-кнопку (планшет)
-         */
         function createMenuButton_Plane(config) {
             const { text, details, position, width = 1, height = 0.3, color = '#667eea', onClick } = config;
-
             const button = document.createElement('a-entity');
             button.setAttribute('position', position);
-
             const plane = document.createElement('a-plane');
             plane.setAttribute('width', width);
             plane.setAttribute('height', height);
             plane.setAttribute('color', color);
             plane.setAttribute('class', 'menu-button');
             plane.dataset.originalColor = color;
-
             const label = document.createElement('a-text');
             label.setAttribute('value', text);
             label.setAttribute('position', '0 0 0.01');
             label.setAttribute('align', 'center');
             label.setAttribute('width', width * 2);
             label.setAttribute('color', '#FFFFFF');
-
+            label.setAttribute('font', 'roboto');
             const detailText = document.createElement('a-text');
             detailText.setAttribute('value', details);
             detailText.setAttribute('position', `0 -${height / 1.5} 0.01`);
@@ -618,9 +738,8 @@
             detailText.setAttribute('width', width * 1.5);
             detailText.setAttribute('color', '#DDDDDD');
             detailText.setAttribute('visible', 'false');
-            
+            detailText.setAttribute('font', 'roboto');
             button.detailText = detailText;
-
             plane.addEventListener('mouseenter', () => {
                 plane.setAttribute('color', '#FFFFFF');
                 detailText.setAttribute('visible', 'true');
@@ -629,56 +748,41 @@
                 plane.setAttribute('color', color);
                 detailText.setAttribute('visible', 'false');
             });
-
             if (onClick) {
                 plane.addEventListener('click', onClick);
             }
-
             button.appendChild(plane);
             button.appendChild(label);
             button.appendChild(detailText);
             return button;
         }
-
-        /**
-         * Создает кнопку-сферу (для выбора режима)
-         */
         function createMenuButton_Sphere(config) {
             const { text, position, radius = 0.2, color = '#667eea', mode } = config;
-            
             const button = document.createElement('a-entity');
             button.setAttribute('position', position);
-
             const sphere = document.createElement('a-entity');
             sphere.setAttribute('geometry', { primitive: 'sphere', radius: radius });
             sphere.setAttribute('material', { shader: 'standard', color: color, emissive: color, emissiveIntensity: 0.3 });
             sphere.setAttribute('class', 'menu-button');
             sphere.dataset.originalColor = color;
             sphere.dataset.mode = mode;
-            
             const label = document.createElement('a-text');
             label.setAttribute('value', text);
             label.setAttribute('position', `0 ${radius + 0.1} 0`);
             label.setAttribute('align', 'center');
             label.setAttribute('width', '2');
-            
+            label.setAttribute('font', 'roboto');
             sphere.addEventListener('mouseenter', () => sphere.setAttribute('scale', '1.2 1.2 1.2'));
             sphere.addEventListener('mouseleave', () => sphere.setAttribute('scale', '1 1 1'));
-
             sphere.addEventListener('click', () => {
                 selectMode(sphere, mode);
             });
-            
             button.appendChild(sphere);
             button.appendChild(label);
             return button;
         }
-
-      /**
-         * *** ИСПРАВЛЕНО: Теперь корректно создает кнопку "Confirm" ***
-         */
+        
         function selectMode(clickedButton, mode) {
-            // "Снимаем выделение" с предыдущей кнопки
             if (selectedModeButton) {
                 selectedModeButton.setAttribute('material', { 
                     color: selectedModeButton.dataset.originalColor,
@@ -686,21 +790,18 @@
                     emissiveIntensity: 0.3
                 });
             }
-            
-            // "Выделяем" новую кнопку
             clickedButton.setAttribute('material', { 
-                color: '#FFFFFF', // Белый
+                color: '#FFFFFF', 
                 emissive: '#FFFFFF',
                 emissiveIntensity: 0.8
             });
-            
-            // Сохраняем выбор
             selectedModeButton = clickedButton;
-            ACTIVE_CONFIG = CONFIG[mode];
             
-            // --- Создаем кнопку "Confirm" ---
-
-            // 1. Удаляем старую кнопку "Confirm", если она есть
+            // *** "ШІ": Ми робимо ГЛИБОКУ копію конфігурації ***
+            ACTIVE_CONFIG = JSON.parse(JSON.stringify(CONFIG[mode]));
+            
+            SESSION_STATE.currentModeKey = mode;
+            
             if (confirmButton) {
                 if (confirmButton.parentNode) {
                     confirmButton.parentNode.removeChild(confirmButton);
@@ -708,21 +809,15 @@
                 confirmButton = null;
             }
 
-            // 2. Получаем позицию родительского <a-entity> кнопки режима
             const parentEntity = clickedButton.parentNode;
             const parentPosition = parentEntity.getAttribute('position');
-            const newPos = `${parentPosition.x} -0.2 ${parentPosition.z}`; // Позиция под сферой
+            const newPos = `${parentPosition.x} -0.2 ${parentPosition.z}`; 
 
-            // 3. Создаем ОДНУ сущность, которая и есть кнопка "Confirm"
             confirmButton = document.createElement('a-entity');
             confirmButton.setAttribute('position', newPos);
-            
-            // 4. Добавляем геометрию и класс ПРЯМО к этой сущности
             confirmButton.setAttribute('geometry', { primitive: 'sphere', radius: 0.1 });
-            confirmButton.setAttribute('material', { color: '#4CAF50' }); // Зеленый
-            confirmButton.setAttribute('class', 'menu-button'); // <-- Класс, который "видит" курсор
-
-            // 5. Добавляем анимацию
+            confirmButton.setAttribute('material', { color: '#4CAF50' }); 
+            confirmButton.setAttribute('class', 'menu-button'); 
             confirmButton.setAttribute('animation__pulse', {
                 property: 'scale',
                 dir: 'alternate',
@@ -732,26 +827,37 @@
                 loop: true
             });
 
-            // 6. Добавляем текст
             const text = document.createElement('a-text');
             text.setAttribute('value', 'Confirm');
-            text.setAttribute('position', '0 0.15 0'); // Текст над шариком
+            text.setAttribute('position', '0 0.15 0'); 
             text.setAttribute('align', 'center');
             text.setAttribute('width', 2);
-
-            // 7. Добавляем слушатель клика ПРЯМО к этой сущности
-            confirmButton.addEventListener('click', () => {
+            text.setAttribute('font', 'roboto');
+            let gameHasStarted = false;
+            
+            const startGame = async (event) => {
+                if (event.type === 'touchstart') {
+                    event.preventDefault(); 
+                }
+                if (gameHasStarted) return; 
+                gameHasStarted = true;
+                
+                console.log("StartGame called via", event.type);
+                
+                // (Виклик connectWebSocket() видалено)
+                await initAudio(); 
                 initSession();
-                initAudio();
-            });
+            };
 
-            // 8. Добавляем элементы в сцену
+            confirmButton.addEventListener('click', startGame);
+            confirmButton.addEventListener('touchstart', startGame); 
+
             confirmButton.appendChild(text);
             menuContainer.appendChild(confirmButton);
         }
+
         function hideMenu() {
             menuContainer.setAttribute('visible', 'false');
-            // Очищаем кнопку "Confirm", когда игра начинается
             if (confirmButton) {
                 if (confirmButton.parentNode) {
                     confirmButton.parentNode.removeChild(confirmButton);
@@ -778,9 +884,26 @@
         setInterval(checkOutOfBounds, 100);
         
         scene.addEventListener('loaded', () => {
+            
+            manualVRButton.addEventListener('click', async () => {
+                // (Виклик connectWebSocket() видалено)
+                await initAudio(); 
+                try {
+                    await scene.enterVR();
+                } catch (e) {
+                    console.error("Failed to enter VR:", e);
+                    alert("Could not enter VR mode. Make sure permissions are granted.");
+                }
+            });
+
+            if (scene.is('vr-mode')) {
+                manualVRButton.style.display = 'none';
+            }
+            
             checkOrientation();
-            // ВЫЗЫВАЕМ СОЗДАНИЕ VR-МЕНЮ
             createMainMenu();
+            
+            // (Блок підключення WebSocket для не-iOS видалено)
         });
     </script>
 </body>
